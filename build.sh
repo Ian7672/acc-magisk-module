@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Installation Archives Builder
-# Copyright 2018-2022, VR25
+# Copyright 2018-2024, VR25
 # License: GPLv3+
 #
 # usage: $0 [any_random_arg]
@@ -12,7 +12,6 @@
 (cd ${0%/*} 2>/dev/null
 
 . ./check-syntax.sh || exit $?
-
 
 set_prop() {
   sed -i -e "s/^($1=.*/($1=$2/" -e "s/^$1=.*/$1=$2/" \

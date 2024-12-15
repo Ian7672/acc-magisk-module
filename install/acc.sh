@@ -498,7 +498,7 @@ case "${1-}" in
   ;;
 
   -ss::)
-    sort $dataDir/logs/working-switches.log | nl -s ") " -w 2 -v 1
+    set_prop_ $1
   ;;
 
   -sv)
@@ -542,12 +542,6 @@ case "${1-}" in
       if [ -n "$parsed" ]; then
         cat $TMPDIR/ch-switches $_parsed 2>/dev/null > $parsed \
           && sort -u $parsed | sed 's/ $//; /^$/d' > $TMPDIR/ch-switches
-      fi
-      if [ -f $TMPDIR/.sw ]; then
-        while IFS= read line; do
-          [ -n "$line" ] || continue
-          ! grep -q "$line " $TMPDIR/.sw || sed -i "\|$line|d" $dataDir/logs/write.log
-        done < $dataDir/logs/write.log
       fi
       cp -f $logF $logF_ 2>/dev/null
       ! $daemonWasUp || start-stop-daemon -bx $TMPDIR/.accdt -S --

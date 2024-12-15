@@ -245,6 +245,8 @@ battCapacity=$batt/capacity
 battStatus=$battStatus
 currFile=$currFile
 curThen=$curThen
+idleThreshold=${idleThreshold:-40}
+_STI=${_STI:-15}
 temp=$temp
 voltNow=$voltNow" > $TMPDIR/.batt-interface.sh
 

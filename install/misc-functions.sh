@@ -66,10 +66,9 @@ at() {
   local file=$TMPDIR/schedules/${1/:}
   if [ ! -f $file ] && [ $(date +%H%M) -ge ${file##*/} ] && [ $(date +%H) -eq ${1%:*} ]; then
     mkdir -p ${file%/*}
-    touch $file
     shift
-    set -- $(echo "$@" | sed 's/,/\;/g; s|^acc|/dev/acc|g; s| acc| /dev/acc|g')
-    eval "$@" || :
+    echo "$@" | sed 's/,/\;/g; s|^acc|/dev/acc|g; s| acc| /dev/acc|g' > $file
+    . $file || :
   elif [ $(date +%H%M) -lt ${file##*/} ]; then
     rm $file 2>/dev/null || :
   fi
@@ -132,8 +131,6 @@ disable_charging() {
 
   local autoMode=true
 
-  # not_charging || {
-
     [[ "${chargingSwitch[*]-}" != *\ -- ]] || autoMode=false
 
     if [[ "${chargingSwitch[0]-}" = */* ]]; then
@@ -161,7 +158,6 @@ disable_charging() {
 
     (set +eux; eval '${runCmdOnPause-}') || :
     chDisabledByAcc=true
-  # }
 
   if [ -n "${1-}" ]; then
     case $1 in
@@ -207,8 +203,6 @@ disable_charging() {
 
 enable_charging() {
 
-  # ! not_charging || {
-
     [ ! -f $TMPDIR/.sw ] || (. $TMPDIR/.sw; rm $TMPDIR/.sw; flip_sw on) 2>/dev/null || :
 
     if ! $ghostCharging || { $ghostCharging && online; }; then
@@ -232,7 +226,6 @@ enable_charging() {
     fi
 
     chDisabledByAcc=false
-  # }
 
   set_temp_level
 
@@ -417,9 +410,8 @@ write() {
     case "$(grep -E "^(#$2|$2)$" $f 2>/dev/null || :)" in
       \#*) blacklisted=true;;
       */*) eval "echo $1 > $2" || i=x;;
-      *) echo \#$2 >> $f
-         eval "echo $1 > $2" || i=x
-         sed -i "s|^#$2$|$2|" $f;;
+      *) echo $2 >> $f
+         eval "echo $1 > $2" || i=x;;
     esac
   else
     i=x
