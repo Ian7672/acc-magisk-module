@@ -154,7 +154,9 @@ disable_charging() {
     fi
 
     if $autoMode && ! not_charging; then
-      return 7 # total failure
+      #return 7 # total failure
+      notif "⚠️ Exit 7; accd is re-initializing"
+      exec $TMPDIR/accd $config --init
     fi
 
     (set +eux; eval '${runCmdOnPause-}') || :
