@@ -57,11 +57,18 @@ battery/input_suspend 0 1 /proc/mtk_battery_cmd/en_power_path 1 1
 /sys/module/lge_battery/parameters/charge_stop_level 100 5 battery/input_suspend 0 0
 
 # experimental
+#battery/charge_control_start_threshold 0 1 battery/charge_control_end_threshold 0 2
 /sys/class/qcom-battery/cool_mode 0 1
+/sys/class/qcom-battery/wireless_boost_en 0 1
 /sys/devices/platform/google,charger/charge_stop_level 100 5
 /sys/devices/platform/google,charger/charge_stop_level 100 battery/capacity
+/sys/devices/platform/soc/soc:oplus,chg_intf/oplus_chg/battery/chg_enable 1 0
+/sys/devices/platform/soc/soc:oplus,chg_intf/oplus_chg/battery/chg_enable 1 0
+/sys/devices/platform/soc/soc:oplus,chg_intf/oplus_chg/battery/cool_down 0 1
+/sys/devices/platform/soc/soc:qcom,pmic_glink/soc:qcom,pmic_glink:mmi,qti-glink-charger/force_usb_suspend 0 1
 /sys/kernel/debug/google_charger/chg_mode 0 1
 /sys/kernel/fast_charge/force_fast_charge 1 0
+/sys/module/qpnp_adaptive_charge/parameters/blocking 0 1
 #/sys/module/qpnp_fg/parameters/batt_range_pct 0 1
 #/sys/module/qpnp_smbcharger/parameters/dynamic_icl_wipower_en 0 1
 #battery/charge_control_limit 0 1
@@ -72,6 +79,7 @@ battery/input_suspend 0 1 /proc/mtk_battery_cmd/en_power_path 1 1
 #usb/cc_toggle_enable 1 0
 #usb/otg_fastroleswap 0 1
 battery/charge_control_limit 0 battery/charge_control_limit_max
+charger/charge_control_limit 0 charger/charge_control_limit_max
 battery/hmt_ta_charge 1 0
 battery/restricted_charging 0 1
 battery/system_temp_in_level 0 battery/num_system_temp_in_levels

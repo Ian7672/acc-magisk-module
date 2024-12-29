@@ -40,9 +40,20 @@ echo 1 > battery_ext/smart_charging_activation 2>/dev/null || :
 }
 
 # msm8937 reports wrong current; disable current-based status detection
-[ .$(getprop ro.product.board) != .msm8937 ] || {
+! getprop ro.product.board | grep -i msm8937 || {
   [ .$(_get_prop battStatusWorkaround) = .false ] \
     || $TMPDIR/acca $config --set batt_status_workaround=false
+}
+
+# msm8937 reports wrong current; disable current-based status detection
+! getprop ro.product.board | grep -i msm8937 || {
+  [ .$(_get_prop battStatusWorkaround) = .false ] \
+    || $TMPDIR/acca $config --set batt_status_workaround=false
+}
+
+# MSM8953 current polarity lags
+! getprop ro.product.board | grep -i MSM8953 || {
+  grep -q "^:; _DPOL=+" $config || echo ":; _DPOL=+" >> $config
 }
 
 unset -f _grep _get_prop _set_prop
