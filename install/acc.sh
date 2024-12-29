@@ -398,6 +398,7 @@ case "${1-}" in
 
     print '\n:; online || exec $TMPDIR/accd' >> $config
     print_charging_enabled_until ${_two}%
+    notif "$(print_charging_enabled_until ${_two}%)"
     echo
     exec $TMPDIR/accd $config
   ;;

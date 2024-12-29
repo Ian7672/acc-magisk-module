@@ -95,7 +95,7 @@ consumed_watts $consumed_watts"
 
   # online status (for debugging)
   echo
-  grep . */online | sed 's/:/ /'
+  grep . */online | sed -E 's/:(.)$/ \1/'
 
 
   } | grep -Ei "${one:-.*}" || :

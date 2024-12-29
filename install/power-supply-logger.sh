@@ -46,7 +46,8 @@ export TMPDIR=/dev/.vr25/acc
 execDir=/data/adb/vr25/acc
 logsDir=/data/adb/vr25/acc-data/logs
 
-print_wait 2>/dev/null || echo "This may take a while..."
+print_wait 2>/dev/null || echo "This may take a while... ⏳"
+echo
 
 
 # log

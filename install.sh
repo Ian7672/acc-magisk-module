@@ -328,7 +328,7 @@ esac
 OVERLAY_IMAGE_EXTRA=0     # number of kb need to be added to overlay.img
 OVERLAY_IMAGE_SHRINK=true # shrink overlay.img or not?
 
-# Only use OverlayFS if Magisk_OverlayFS is installed
+# only use OverlayFS if Magisk_OverlayFS is installed
 if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
     /data/adb/modules/magisk_overlayfs/overlayfs_system --test; then
   ui_print ""
