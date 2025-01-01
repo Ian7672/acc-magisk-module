@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  echo "Conecte o carregador primeiro..."
+  printf "Conecte o carregador primeiro 🔌\n\n"
 }
 
 print_switch_works() {

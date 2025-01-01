@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  echo "Ensure the charger is plugged 🔌"
+  printf "Ensure the charger is plugged 🔌\n\n"
 }
 
 print_switch_works() {
@@ -538,5 +538,5 @@ print_resume() {
 
 
 print_hang() {
-  echo "Hang on..."
+  echo "Hang on... ⏳"
 }

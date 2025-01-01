@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  echo "Assurez-vous que le chargeur est branché 🔌"
+  printf "Assurez-vous que le chargeur est branché 🔌\n\n"
 }
 
 print_switch_works() {

@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  echo "Sambungkan pengisi daya untuk melanjutkan..."
+  printf "Sambungkan pengisi daya untuk melanjutkan 🔌\n\n"
 }
 
 print_switch_works() {

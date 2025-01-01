@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  echo "请确保充电器已插入🔌"
+  printf "请确保充电器已插入 🔌\n\n"
 }
 
 print_switch_works() {
