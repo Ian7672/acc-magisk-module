@@ -37,7 +37,6 @@ not_charging() {
   if [ -z "${battStatusOverride-}" ] && [ -n "$switch" ]; then
     for i in $(seq $_STI); do
       if [ "$switch" = off ]; then
-        _STI=$((_STI - 1))
         ! status ${1-} || {
           sw=$(grep "\[[id]\] $chargingSwitch" $wsLog 2>/dev/null || :)
           while :; do
@@ -61,7 +60,7 @@ not_charging() {
         status ${1-} || return 1
       fi
       [ ! -f $TMPDIR/.nowrite ] || { rm $TMPDIR/.nowrite 2>/dev/null || :; break; }
-      [ $i = $_STI ] || sleep 1
+      [ $i = $_STI ] || usleep 2500000
     done
     [ "$switch" = on ] || return 1
   else
@@ -125,10 +124,9 @@ set_temp_level() {
 
 status() {
 
-  local i=
+  local i=0
   local return1=false
   local csw2=${chargingSwitch[2]-}
-  local _ITI=${_ITI:-3} # idle test iterations
   local curNow=$(cat $currFile)
 
   _status=$(read_status)
@@ -141,24 +139,10 @@ status() {
       _status=$(set -eu; eval '$battStatusOverride') || :
     fi
   elif $battStatusWorkaround; then
-    if [ "$switch" = off ] && { [ -n "${exitCode_-}" ] || ${cyclingSw:-false}; }; then
-      for i in $(seq $_ITI); do
-        curNow=$(cat $currFile)
-        idle_discharging
-        if [ $_status = Idle ]; then
-          [ $i -eq $_ITI ] || sleep 1
-        else
-          [ $_STI -eq 0 ] || return1=true
-          break
-        fi
-      done
-    else
-      idle_discharging
-    fi
+    idle_discharging
   fi
 
   [ -z "${exitCode_-}" ] || echo -e "  ${switch:--} (${swValue:-N/A})\t$(calc $curNow \* 1000 / ${ampFactor:-$ampFactor_} | xargs printf %.f)mA\t$_status"
-  ! $return1 || return 1
 
   for i in Discharging DischargingDischarging Idle IdleIdle; do
     [ $i != ${1-}$_status ] || return 0
@@ -246,7 +230,7 @@ battStatus=$battStatus
 currFile=$currFile
 curThen=$curThen
 idleThreshold=${idleThreshold:-40}
-_STI=${_STI:-15}
+_STI=\${_STI:-15}
 temp=$temp
 voltNow=$voltNow" > $TMPDIR/.batt-interface.sh
 
