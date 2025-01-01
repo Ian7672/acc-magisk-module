@@ -132,6 +132,7 @@ test_charging_switch() {
   chargingSwitch=($@)
 
   echo
+  { set_temp_level 50; set_ch_curr 500; } > /dev/null
 
   [ -n "${swCount-}" ] \
     && echo "$swCount/$swTotal: ${chargingSwitch[@]-}" \
@@ -139,7 +140,8 @@ test_charging_switch() {
 
   echo "chargingSwitch=($*)" > $TMPDIR/.sw
   flip_sw off
-  ! [ $? -eq 2 ] || {
+
+  [ $? -eq 2 ] && {
     flip_sw on
     switch_fails
     return 10

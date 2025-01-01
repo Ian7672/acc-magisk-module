@@ -84,7 +84,6 @@ cycle_switches() {
 
   local on=
   local off=
-  local cyclingSw=true
 
   touch $TMPDIR/.testingsw
 
@@ -97,6 +96,7 @@ cycle_switches() {
       if [ "$1" = on ]; then
         not_charging || break
       else
+        { set_temp_level 50; set_ch_curr 500; } > /dev/null
         if not_charging ${2-}; then
           # set working charging switch(es)
           s="${chargingSwitch[*]}" # for some reason, without this, the array is null
