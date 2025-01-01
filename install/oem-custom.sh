@@ -51,10 +51,5 @@ echo 1 > battery_ext/smart_charging_activation 2>/dev/null || :
     || $TMPDIR/acca $config --set batt_status_workaround=false
 }
 
-# MSM8953 current polarity lags
-! getprop ro.product.board | grep -i MSM8953 || {
-  grep -q "^:; _DPOL=+" $config || echo ":; _DPOL=+" >> $config
-}
-
 unset -f _grep _get_prop _set_prop
 unset configVer defaultConfVer

@@ -16,7 +16,6 @@ set_ch_curr() {
       $isAccd || {
         print_read_curr
         print_unplugged
-        echo
       }
       (set +x; while not_charging; do sleep 1; done)
     }
