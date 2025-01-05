@@ -351,11 +351,10 @@ notif() {
 
 parse_value() {
   if [ -f "$1" ]; then
-    chmod a+r $1 2>/dev/null || :
-    cat $1
+    chmod a+r $1 && cat $1 || echo 20
   else
     echo "$1" | sed 's/::/ /g'
-  fi
+  fi 2>/dev/null
 }
 
 
