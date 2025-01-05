@@ -1001,7 +1001,7 @@ Exit Codes
   11. Current (mA) out of 0-9999 range
   12. Initialization failed
   13. Failed to lock /acc.lock
-  14. ACC won't initialize, because the Magisk module disable flag is set
+  14. ACC won't initialize, because the Magisk module disable flag is set or a bootloop was flagged (logs/bootloop-*.log)
   15. Idle mode is supported (--test)
   16. Failed to enable charging (--test)
 

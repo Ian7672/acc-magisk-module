@@ -311,6 +311,16 @@ flip_sw() {
 }
 
 
+handle_bootloop() {
+  local newZygotePID="$(getprop init.svc_debug_pid.zygote)"
+  [ "$newZygotePID" = "$zygotePID" ] || {
+    cat $log > $dataDir/logs/bootloop-${device}.log
+    write() { :; }
+    exit 0
+  }
+}
+
+
 invalid_switch() {
   $isAccd || print_invalid_switch
   unset_switch
@@ -424,16 +434,19 @@ write() {
   if [ -n "${exitCode_-}" ]; then
     [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
   fi
+  handle_bootloop
   [ $i = x ] && return ${3-1} || {
     for i in $(seq $seq); do
       if eval "echo $1 > $2"; then
         [ $i -eq $seq ] || usleep $((1000000 / $seq))
       else
+        handle_bootloop
         return 1
       fi
     done
     chmod 0444 $2
   }
+  handle_bootloop
 }
 
 
@@ -460,6 +473,7 @@ trap exxit EXIT
 . $execDir/set-ch-volt.sh
 
 device=$(getprop ro.product.device | grep .. || getprop ro.build.product)
+zygotePID="$(getprop init.svc_debug_pid.zygote)"
 
 cd /sys/class/power_supply/
 . $execDir/batt-interface.sh
