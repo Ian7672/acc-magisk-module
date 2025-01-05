@@ -222,7 +222,7 @@ parse_switches() {
     ! grep -q "$i " $1 || continue
 
     # blacklist
-    i="$(echo "$i $n" | grep -Eiv 'authentic|brightness|calibrat|capacitance|count|curr|cycle|daemon|demo|design|detect|disk|empty|factory|fast|flash|info|init|mask|moist|nvram|online|otg|parallel|present|priority|reboot|report|resistance|reset|runtime|ship|shutdown|state|status|step|sync|temp|timer|type|update|user|verif|volt|wake|wakeup')" || :
+    i="$(echo "$i $n" | grep -Eiv 'authentic|brightness|calibrat|capacitance|count|curr|cycle|daemon|demo|design|detect|disk|empty|factory|fast|flash|full|info|init|mask|moist|nvram|online|otg|parallel|present|priority|reboot|refcnt|report|resistance|reset|reverse|time|rx_|ship|shutdown|state|status|step|sync|temp|timer|tx_|type|update|user|verif|volt|wake|wakeup')" || :
 
     [ -z "$i" ] || echo "$i"
 
