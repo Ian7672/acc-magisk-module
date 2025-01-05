@@ -1,6 +1,7 @@
 _grep() { grep -Eq "$1" ${2:-$config}; }
 _set_prop() { sed -i "\|^${1}=|s|=.*|=$2|" ${3:-$config}; }
 _get_prop() { sed -n "\|^$1=|s|.*=||p" ${2:-$config} 2>/dev/null || :; }
+_is_board() { getprop ro.product.board | grep -Eiq "$1"; }
 
 # patch/reset [broken/obsolete] config
 if (set +x; . $config) >/dev/null 2>&1; then
@@ -28,28 +29,25 @@ fi
 # idle mode - sony xperia
 echo 1 > battery_ext/smart_charging_activation 2>/dev/null || :
 
-# block "ghost charging on steroids" (Xiaomi Redmi 3 - ido)
-[ ! -f $TMPDIR/accd-ido.log ] || touch $TMPDIR/.ghost-charging
-
 # mt6795, exclude ChargerEnable switches (troublesome)
-! getprop | grep -E mt6795 > /dev/null || {
+! getprop | grep '\[mt6795\]' > /dev/null || {
   ! _grep ChargerEnable $execDir/ctrl-files.sh || {
     sed -i /ChargerEnable/d $TMPDIR/ch-switches
     sed -i /ChargerEnable/d $execDir/ctrl-files.sh
   }
 }
 
-# msm8937 reports wrong current; disable current-based status detection
-! getprop ro.product.board | grep -i msm8937 || {
+# prevent "ghost charging" (MSM8916)
+! _is_board '^MSM8916$' || touch $TMPDIR/.ghost-charging
+
+# devices that report wrong current; disable current-based status detection
+! _is_board '^(msm8937|CRO-L03)$' || {
   [ .$(_get_prop battStatusWorkaround) = .false ] \
     || $TMPDIR/acca $config --set batt_status_workaround=false
 }
 
-# msm8937 reports wrong current; disable current-based status detection
-! getprop ro.product.board | grep -i msm8937 || {
-  [ .$(_get_prop battStatusWorkaround) = .false ] \
-    || $TMPDIR/acca $config --set batt_status_workaround=false
-}
+# avoid unexpected reboots
+! _is_board '^CRO-L03$' || sed -i /current_cmd/d $TMPDIR/ch-switches
 
-unset -f _grep _get_prop _set_prop
+unset -f _grep _get_prop _is_board _set_prop
 unset configVer defaultConfVer

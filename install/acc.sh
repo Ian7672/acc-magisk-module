@@ -221,7 +221,8 @@ parse_switches() {
     # exclude all known switches
     ! grep -q "$i " $1 || continue
 
-    i="$(echo "$i $n" | grep -Eiv 'reset|authentic|brightness|calibrat|capacitance|count|curr|cycle|daemon|demo|design|detect|disk|factory|flash|info|init|mask|moist|nvram|online|otg|parallel|present|priority|reboot|report|resistance|runtime|ship|shutdown|shutdown|state|status|step|temp|timer|type|type|update|user|verif|volt|wake|wakeup')" || :
+    # blacklist
+    i="$(echo "$i $n" | grep -Eiv 'authentic|brightness|calibrat|capacitance|count|curr|cycle|daemon|demo|design|detect|disk|empty|factory|fast|flash|info|init|mask|moist|nvram|online|otg|parallel|present|priority|reboot|report|resistance|reset|runtime|ship|shutdown|state|status|step|sync|temp|timer|type|update|user|verif|volt|wake|wakeup')" || :
 
     [ -z "$i" ] || echo "$i"
 
@@ -398,9 +399,10 @@ case "${1-}" in
     esac
     ! $_extra || eval $TMPDIR/acca $config "$@"
 
-    print '\n:; online || exec $TMPDIR/accd' >> $config
+    #print '\n:; online || exec $TMPDIR/accd' >> $config
     print_charging_enabled_until ${_two}%
-    notif "$(print_charging_enabled_until ${_two}%)"
+    print_restart_accd
+    notif "$(print_charging_enabled_until ${_two}%; print_restart_accd)"
     echo
     exec $TMPDIR/accd $config
   ;;
@@ -567,6 +569,7 @@ case "${1-}" in
 
     . $execDir/read-ch-curr-ctrl-files-p2.sh
     echo
+    echo _STI=$_STI
     { echo versionCode=$(sed -n s/versionCode=//p $execDir/module.prop 2>/dev/null || :)
     echo
     grep . */online

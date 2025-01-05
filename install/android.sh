@@ -8,7 +8,7 @@ is_android() {
 if is_android; then
   cmd_batt() {
     if [ $1 = get ]; then
-      dumpsys battery | sed -n "s/^  $2: //p"
+      { dumpsys battery | sed -n "s/^  $2: //p"; } 2>/dev/null || :
     else
       /system/bin/cmd battery "$@" < /dev/null 2>/dev/null || :
     fi

@@ -79,15 +79,16 @@ online() {
 
 
 online_f() {
-  ls -1 */online | grep -Ei '^ac/|^dc/|^mains/|^pc_port/|^smb[0-9]{3}\-usb/|^usb/|^wireless/' || :
+  ls -1 */online | grep -Ei '^ac/|^dc/|^mains/|^mtk\-.*(chg|charger)/|^pc_port/|^smb[0-9]{3}\-usb/|^usb/|^wireless/' || :
 }
 
 
 read_status() {
   local status="$(cat $battStatus)"
   case "$status" in
+    Cmd*discharging) printf Discharging;;
     Charging|Discharging) printf %s $status;;
-    Not?charging) online && printf Idle || printf Discharging;;
+    Not?charging) printf Idle;;
     *) printf Discharging;;
   esac
 }
@@ -247,5 +248,5 @@ fi
 batt_cap() {
   local l=$(cmd_batt get level)
   local l2=$(cat $battCapacity)
-  [[ -n "$l" && $l -ne $l2 ]] && echo $l || echo $l2
+  [ -n "$l" ] && echo $l || echo $l2
 }

@@ -210,15 +210,15 @@ enable_charging() {
       flip_sw on || cycle_switches on
 
       # detect and block ghost charging
-      if ! $ghostCharging && ! not_charging && ! online \
-        && sleep ${loopDelay[0]} && ! not_charging && ! online
-      then
-        ghostCharging=true
-        disable_charging > /dev/null
-        touch $TMPDIR/.ghost-charging
-        wait_plug
-        return 0
-      fi
+      # if ! $ghostCharging && ! not_charging && ! online \
+      #   && sleep ${loopDelay[0]} && ! not_charging && ! online
+      # then
+      #   ghostCharging=true
+      #   disable_charging > /dev/null
+      #   touch $TMPDIR/.ghost-charging
+      #   wait_plug
+      #   return 0
+      # fi
 
     else
       wait_plug

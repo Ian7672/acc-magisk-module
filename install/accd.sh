@@ -419,19 +419,23 @@ if ! $_INIT; then
     . $config
     while [ -z "${_DPOL-}" ] && $battStatusWorkaround && [ $currFile != $TMPDIR/.dummy-curr ]; do
       curr=$(cat $currFile)
-      if online; then
-        if [ $(cat $battStatus) = Charging ]; then
-          if [ $curr -gt 0 ]; then
-            sdp -
-          elif [ $curr -lt 0 ]; then
-            sdp +
-          fi
+      if [ $(cat $battStatus) = Charging ]; then
+        if [ $curr -gt 0 ]; then
+          sdp -
+        elif [ $curr -lt 0 ]; then
+          sdp +
+        else
+          /dev/acca --set batt_status_workaround=false
+          return 0
         fi
       else
         if [ $curr -gt 0 ]; then
           sdp +
         elif [ $curr -lt 0 ]; then
           sdp -
+        else
+          /dev/acca --set batt_status_workaround=false
+          return 0
         fi
       fi
       set +x

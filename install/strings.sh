@@ -16,6 +16,10 @@ print_not_running() {
   echo "accd is not running"
 }
 
+print_restart_accd() {
+  echo "Restart accd manually to exit this mode"
+}
+
 print_restarted() {
   echo "accd restarted"
 }
