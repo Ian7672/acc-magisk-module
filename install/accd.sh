@@ -639,13 +639,15 @@ else
   cd /sys/class/power_supply/
   : > $TMPDIR/ch-switches_
   : > $TMPDIR/ch-switches__
+
   for f in $TMPDIR/plugins/ctrl-files.sh \
     ${execDir}-data/plugins/ctrl-files.sh \
     $execDir/ctrl-files.sh
   do
     [ -f $f ] && . $f && break
   done
-  ls_ch_switches | grep -Ev '^#|^$' | \
+
+  ls_ch_switches | grep -Ev '^#|^$|num_system_temp' | \
     while IFS= read -r chargingSwitch; do
       set -f
       set -- $chargingSwitch
@@ -667,6 +669,18 @@ else
       fi
       echo >> $TMPDIR/ch-switches_
     done
+
+  ls_ch_switches | grep num_system_temp | \
+    while IFS= read -r chargingSwitch; do
+      chsw=($chargingSwitch)
+      [ -f ${chsw[0]} ] || continue
+      chsw[2]=$(cat ${chsw[2]})
+      echo "${chsw[*]}" >> $TMPDIR/ch-switches_
+      for i in 1 2; do
+        echo "${chsw[0]} ${chsw[1]} $((chsw[2] - i))" >> $TMPDIR/ch-switches_
+      done
+    done
+
   cat $dataDir/logs/parsed.log 2>/dev/null >> $TMPDIR/ch-switches_
   sed -i -e 's/ $//' -e '/^$/d' $TMPDIR/ch-switches_
 

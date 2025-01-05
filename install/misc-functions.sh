@@ -7,7 +7,6 @@ apply_on_boot() {
   local arg=${1:-value}
   local exitCmd=false
   local force=false
-  local oppositeValue=
 
   [ ${2:-x} != force ] || force=true
 
@@ -23,7 +22,6 @@ apply_on_boot() {
     else
       default=${3:-${2-}}
     fi
-    [ $arg = default ] && oppositeValue="$value" || oppositeValue="$default"
     set +e
     write \$$arg $file 0 &
     set -e
@@ -41,7 +39,6 @@ apply_on_plug() {
   local value=
   local default=
   local arg=${1:-value}
-  local oppositeValue=
 
   for entry in ${applyOnPlug[@]-} ${maxChargingVoltage[@]-} \
     ${maxChargingCurrent[@]:-$([ .$arg != .default ] || cat $TMPDIR/ch-curr-ctrl-files 2>/dev/null || :)}
@@ -51,7 +48,6 @@ apply_on_plug() {
     file=${1-}
     value=${2-}
     default=${3:-${2-}}
-    [ $arg = default ] && oppositeValue="$value" || oppositeValue="$default"
     set +e
     write \$$arg $file 0 &
     set -e
@@ -285,7 +281,6 @@ flip_sw() {
   flip=$1
   local on=
   local off=
-  local oppositeValue=
 
   set -- ${chargingSwitch[@]-}
   [ -f ${1:-//} ] || return 2
@@ -301,7 +296,7 @@ flip_sw() {
       off="$(parse_value "$3")"
     fi
 
-    [ $flip = on ] && oppositeValue="$off" || { oppositeValue="$on"; cat $currFile > $curThen; }
+    [ $flip = on ] || cat $currFile > $curThen
     write \$$flip $1 || return 1
 
     [ $# -lt 3 ] || shift 3
@@ -412,10 +407,13 @@ wait_plug() {
 
 
 write() {
+
   local i=y
   local seq=5
+  local one="$(eval echo $1)"
   local f=$dataDir/logs/write.log
   blacklisted=false
+
   if [ -f "$2" ] && chown 0:0 $2 && chmod 0644 $2; then
     case "$(grep -E "^(#$2|$2)$" $f 2>/dev/null || :)" in
       \#*) blacklisted=true;;
@@ -428,9 +426,11 @@ write() {
   fi
   f="$(cat $2)" 2>/dev/null || :
   rm $TMPDIR/.nowrite 2>/dev/null || :
-  if [ -n "$f" ]; then
-    [ "$f" != "$oppositeValue" ] || { touch $TMPDIR/.nowrite; i=x; }
-  fi
+  [[ "$one" != */* ]] || one="$(cat $one)"
+  ! [[ -n "$f" && "$f" != "$one" ]] || {
+    touch $TMPDIR/.nowrite
+    i=x
+  }
   if [ -n "${exitCode_-}" ]; then
     [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
   fi
