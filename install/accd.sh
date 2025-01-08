@@ -675,6 +675,7 @@ else
       chsw=($chargingSwitch)
       [ -f ${chsw[0]} ] || continue
       chsw[2]=$(cat ${chsw[2]})
+      [ -n "${chsw[2]}" ] || continue
       echo "${chsw[*]}" >> $TMPDIR/ch-switches_
       for i in 1 2; do
         echo "${chsw[0]} ${chsw[1]} $((chsw[2] - i))" >> $TMPDIR/ch-switches_
