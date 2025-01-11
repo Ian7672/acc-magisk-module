@@ -239,7 +239,7 @@ In interactive mode, it also asks the user whether they want to download and ins
 ```
 #DC#
 
-configVerCode=202405180
+configVerCode=202501110
 
 allowIdleAbovePcap=true
 ampFactor=
@@ -610,7 +610,7 @@ runCmdOnPause=''
 #   maxChargingCurrent=(1000) # Control files will be added.
 #   maxChargingVoltage=(4000 -battery/voltage_max bms/voltage_max) # Control files will be updated. The "-" is mandatory after changing the value (first element). Otherwise, the change has no effect.
 #
-# Notes: The maximum current that can be set via dedicated commands is 9999 mA. For voltage, the max is 4300 mV. One can override those by editing the config directly.
+# Notes: The maximum current that can be set via dedicated commands is 9999 mA. For voltage, the max is 4300 mV. One can override those by editing the config directly. When the charging current value is a percentage, temp_level is used as back-end, rather than the regular current control logic.
 
 
 # max_temp (mt) # resume_temp (rt) #
