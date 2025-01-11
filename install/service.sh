@@ -9,7 +9,7 @@ TMPDIR=/dev/.$domain/$id
 execDir=/data/adb/$domain/$id
 dataDir=/data/adb/$domain/${id}-data
 
-[[ -f $execDir/disable || -f $dataDir/logs/bootloop-*.log ]] && exit 14
+[ -f $execDir/disable ] && exit 14
 
 # wait til the lockscreen is ready and give some bootloop grace period
 slept=false

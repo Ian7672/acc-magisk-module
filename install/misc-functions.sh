@@ -87,12 +87,13 @@ cycle_switches() {
 
     [ ! -f ${chargingSwitch[0]:-//} ] || {
 
+      [ $1 = on ] || { set_temp_level 50; set_ch_curr 500; } > /dev/null
+
       flip_sw $1 || :
 
       if [ "$1" = on ]; then
         not_charging || break
       else
-        { set_temp_level 50; set_ch_curr 500; } > /dev/null
         if not_charging ${2-}; then
           # set working charging switch(es)
           s="${chargingSwitch[*]}" # for some reason, without this, the array is null
@@ -306,16 +307,6 @@ flip_sw() {
 }
 
 
-handle_bootloop() {
-  local newZygotePID="$(getprop init.svc_debug_pid.zygote)"
-  [ "$newZygotePID" = "$zygotePID" ] || {
-    cat $log > $dataDir/logs/bootloop-${device}.log
-    write() { :; }
-    exit 0
-  }
-}
-
-
 invalid_switch() {
   $isAccd || print_invalid_switch
   unset_switch
@@ -433,19 +424,16 @@ write() {
   if [ -n "${exitCode_-}" ]; then
     [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
   fi
-  handle_bootloop
   [ $i = x ] && return ${3-1} || {
     for i in $(seq $seq); do
       if eval "echo $1 > $2"; then
         [ $i -eq $seq ] || usleep $((1000000 / $seq))
       else
-        handle_bootloop
         return 1
       fi
     done
     chmod 0444 $2
   }
-  handle_bootloop
 }
 
 
@@ -472,7 +460,6 @@ trap exxit EXIT
 . $execDir/set-ch-volt.sh
 
 device=$(getprop ro.product.device | grep .. || getprop ro.build.product)
-zygotePID="$(getprop init.svc_debug_pid.zygote)"
 
 cd /sys/class/power_supply/
 . $execDir/batt-interface.sh

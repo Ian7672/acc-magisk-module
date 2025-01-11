@@ -79,7 +79,7 @@ online() {
 
 
 online_f() {
-  ls -1 */online | grep -Ei '^ac/|^dc/|^mains/|^mtk\-.*(chg|charger)/|^pc_port/|^smb[0-9]{3}\-usb/|^usb/|^wireless/' || :
+  ls -1 */online | grep -Ei '^ac/|^dc/|^mains/|^mtk\-.*(chg|charger)/|^pc_port/|^smb[0-9]{3}\-usb/|^usb/|ucsi.*pmic|^wireless/' || :
 }
 
 
