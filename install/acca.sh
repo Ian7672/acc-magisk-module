@@ -56,6 +56,14 @@ mkdir -p $dataDir
   shift
 }
 
+# wait for accd initialization
+[ -f $TMPDIR/.batt-interface.sh ] || {
+  for i in $(seq 35); do
+    [ -f $TMPDIR/.batt-interface.sh ] && break || sleep 2
+  done
+  unset i
+}
+
 
 case "$@" in
 

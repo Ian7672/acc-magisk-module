@@ -107,6 +107,11 @@ Refer to [this XDA post](https://forum.xda-developers.com/t/rom-official-arrowos
 
 [lybxlpsv](https://github.com/lybxlpsv) suggests booting into bootloader/fastboot and then back into system to reset the PMIC.
 
+In case of bootloop, one can easily generate persistent logs and/or stop/disable acc.
+ACC daemon initializes 60 seconds after the boot animation stops.
+This gives plenty of time to run `pkill -9 -f accd` to kill the waiting process or `accd -x` to generate persistent logs (`/sdcard/accd-*.log`) for debugging the bootloop.
+`accd -x` also sets the disable flag (`/data/adb/vr25/acc-data/disable`). This file prevents the daemon from starting again. It's removed manually or by the installer.
+
 
 ---
 ## DONATIONS
@@ -1001,7 +1006,7 @@ Exit Codes
   11. Current (mA) out of 0-9999 range
   12. Initialization failed
   13. Failed to lock /acc.lock
-  14. ACC won't initialize, because the Magisk module disable flag is set or a bootloop was flagged (logs/bootloop-*.log)
+  14. ACC won't initialize, because a "disable" flag is set
   15. Idle mode is supported (--test)
   16. Failed to enable charging (--test)
 

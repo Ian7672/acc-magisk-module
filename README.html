@@ -1340,6 +1340,10 @@ Ensure the battery does not discharge too low.
 Using acc's auto shutdown feature is highly recommended (default shutdown_capacity is 5).</p>
 <p>Refer to <a href="https://forum.xda-developers.com/t/rom-official-arrowos-11-0-android-11-0-vayu-bhima.4267263/post-85119331" rel="nofollow">this XDA post</a> for additional details.</p>
 <p><a href="https://github.com/lybxlpsv">lybxlpsv</a> suggests booting into bootloader/fastboot and then back into system to reset the PMIC.</p>
+<p>In case of bootloop, one can easily generate persistent logs and/or stop/disable acc.
+ACC daemon initializes 60 seconds after the boot animation stops.
+This gives plenty of time to run <code>pkill -9 -f accd</code> to kill the waiting process or <code>accd -x</code> to generate persistent logs (<code>/sdcard/accd-*.log</code>) for debugging the bootloop.
+<code>accd -x</code> also sets the disable flag (<code>/data/adb/vr25/acc-data/disable</code>). This file prevents the daemon from starting again. It's removed manually or by the installer.</p>
 <hr>
 <div class="markdown-heading"><h2 class="heading-element">DONATIONS</h2><a id="user-content-donations" class="anchor" aria-label="Permalink: DONATIONS" href="#donations"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>Please, support the project with donations (<a href="#links">links</a> at the bottom).
@@ -2226,7 +2230,7 @@ Exit Codes
   11. Current (mA) out of 0-9999 range
   12. Initialization failed
   13. Failed to lock /acc.lock
-  14. ACC won't initialize, because the Magisk module disable flag is set or a bootloop was flagged (logs/bootloop-*.log)
+  14. ACC won't initialize, because a "disable" flag is set
   15. Idle mode is supported (--test)
   16. Failed to enable charging (--test)
 

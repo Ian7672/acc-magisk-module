@@ -11,7 +11,7 @@ _INIT=false
 
 case "$*" in
   *-i*) _INIT=true;;
-  *) [ -f $TMPDIR/.config-ver ] || _INIT=true;;
+  *) [ -f $TMPDIR/.batt-interface.sh ] || _INIT=true;;
 esac
 
 

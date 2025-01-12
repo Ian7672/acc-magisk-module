@@ -454,13 +454,20 @@ config_=$config
   || ghostCharging=false
 
 trap exxit EXIT
-
 . $execDir/setup-busybox.sh
 . $execDir/set-ch-curr.sh
 . $execDir/set-ch-volt.sh
 
-device=$(getprop ro.product.device | grep .. || getprop ro.build.product)
+# wait for accd initialization
+if ! ${isAccd:-false} && [ ! -f $TMPDIR/.batt-interface.sh ]; then
+  printf "⏳ accd --init\n\n"
+  for i in $(seq 35); do
+    [ -f $TMPDIR/.batt-interface.sh ] && break || sleep 2
+  done
+  unset i
+fi
 
+device=$(getprop ro.product.device | grep .. || getprop ro.build.product)
 cd /sys/class/power_supply/
 . $execDir/batt-interface.sh
 . $execDir/android.sh

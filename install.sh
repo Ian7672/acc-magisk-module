@@ -320,6 +320,7 @@ esac
 
 
 # initialize $id
+rm $data_dir/disable 2>/dev/null
 /data/adb/$domain/$id/service.sh --init
 
 
