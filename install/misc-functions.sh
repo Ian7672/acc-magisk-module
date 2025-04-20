@@ -87,8 +87,6 @@ cycle_switches() {
 
     [ ! -f ${chargingSwitch[0]:-//} ] || {
 
-      [ $1 = on ] || { set_temp_level 50; set_ch_curr 500; } > /dev/null
-
       flip_sw $1 || :
 
       if [ "$1" = on ]; then

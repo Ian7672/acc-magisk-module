@@ -132,7 +132,6 @@ test_charging_switch_() {
   chargingSwitch=($@)
 
   echo
-  { set_temp_level 50; set_ch_curr 500; } > /dev/null
 
   [ -n "${swCount-}" ] \
     && echo "$swCount/$swTotal: ${chargingSwitch[@]-}" \
