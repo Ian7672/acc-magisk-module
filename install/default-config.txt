@@ -1,4 +1,4 @@
-configVerCode=202501110
+configVerCode=202504200
 
 allowIdleAbovePcap=true
 ampFactor=
@@ -106,7 +106,7 @@ runCmdOnPause=''
 # $battCapacity   $batt/capacity file
 # $battStatus   $batt/status file
 # $currFile   current_now file
-# $idleThreshold   mA absolute value to consider charging status=Idle (default: 40)
+# $idleThreshold   mA absolute value to consider charging status=Idle (default: 10)
 # $temp   temperature reporting file
 # ${isAccd:-false}   true|false (whether accd in running)
 

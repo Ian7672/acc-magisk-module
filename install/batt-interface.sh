@@ -22,7 +22,7 @@ not_charging() {
   local switch=${flip-}; flip=
   local curThen=$(cat $curThen)
   local chargingSwitch="${chargingSwitch[*]-}"
-  local idleThreshold=${idleThreshold:-40}
+  local idleThreshold=${idleThreshold:-10}
   local battStatusOverride="${battStatusOverride-}"
   local battStatusWorkaround=${battStatusWorkaround-}
   local wsLog=$dataDir/logs/working-switches.log
@@ -230,7 +230,7 @@ battCapacity=$batt/capacity
 battStatus=$battStatus
 currFile=$currFile
 curThen=$curThen
-idleThreshold=${idleThreshold:-40}
+idleThreshold=${idleThreshold:-10}
 _STI=\${_STI:-15}
 temp=$temp
 voltNow=$voltNow" > $TMPDIR/.batt-interface.sh

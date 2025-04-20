@@ -553,7 +553,7 @@ case "${1-}" in
     config=$TMPDIR/.config
 
     exxit() {
-      rm $TMPDIR/.testingsw
+      rm $TMPDIR/.testingsw 2>/dev/null || :
       if [ -n "$parsed" ]; then
         cat $TMPDIR/ch-switches $_parsed 2>/dev/null > $parsed \
           && sort -u $parsed | sed 's/ $//; /^$/d' > $TMPDIR/ch-switches

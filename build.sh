@@ -86,7 +86,7 @@ then
     echo; sed -n '/^#\/TC#/,$p' README.md.tmp; } > README.md
     rm README.md.tmp
   set +e
-  markdown README.md > README.html
+  markdown README.md > README.html 2>/dev/null || :
 fi
 
 
