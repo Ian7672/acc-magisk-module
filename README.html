@@ -1343,7 +1343,8 @@ Using acc's auto shutdown feature is highly recommended (default shutdown_capaci
 <p>In case of bootloop, one can easily generate persistent logs and/or stop/disable acc.
 ACC daemon initializes 60 seconds after the boot animation stops.
 This gives plenty of time to run <code>pkill -9 -f accd</code> to kill the waiting process or <code>accd -x</code> to generate persistent logs (<code>/sdcard/accd-*.log</code>) for debugging the bootloop.
-<code>accd -x</code> also sets the disable flag (<code>/data/adb/vr25/acc-data/disable</code>). This file prevents the daemon from starting again. It's removed manually or by the installer.</p>
+<code>accd -x</code> also sets the disable flag (<code>/data/adb/vr25/acc-data/disable</code>). This file prevents the daemon from starting again. It's removed manually or by the installer.
+<code>acc -t</code> always implies <code>-x</code> and tries to auto-blacklist switches that trigger unwanted reboots.</p>
 <hr>
 <div class="markdown-heading"><h2 class="heading-element">DONATIONS</h2><a id="user-content-donations" class="anchor" aria-label="Permalink: DONATIONS" href="#donations"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>Please, support the project with donations (<a href="#links">links</a> at the bottom).
@@ -2174,17 +2175,19 @@ Options
   -sv [millivolts|-] [--exit]   Same as above
 
   -t|--test [ctrl_file1 on off [ctrl_file2 on off]]   Test custom charging switches
+    Implies -x, as in acc -x -t ...
     e.g.,
       acc -t battery/charging_enabled 1 0
       acc -t /proc/mtk_battery_cmd/current_cmd 0::0 0::1 /proc/mtk_battery_cmd/en_power_path 1 0 ("::" is a placeholder for " " - MTK only)
 
   -t|--test [file]   Test charging switches from a file (default: /ch-switches)
+    Implies -x, as in acc -x -t ...
     e.g.,
       acc -t (test known switches)
       acc -t /sdcard/experimental_switches.txt (test custom/foreign switches)
 
   -t|--test [p|parse]   Parse potential charging switches from the power supply log (as "acc -p"), test them all, and add the working ones to the list of known switches
-    Implies -x, as acc -x -t p
+    Implies -x, as in acc -x -t p
     e.g., acc -t p
 
   -T|--logtail   Monitor accd log (tail -F)

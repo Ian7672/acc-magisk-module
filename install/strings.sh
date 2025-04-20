@@ -277,17 +277,19 @@ Options
   -sv [millivolts|-] [--exit]   Same as above
 
   -t|--test [ctrl_file1 on off [ctrl_file2 on off]]   Test custom charging switches
+    Implies -x, as in acc -x -t ...
     e.g.,
       acc -t battery/charging_enabled 1 0
       acc -t /proc/mtk_battery_cmd/current_cmd 0::0 0::1 /proc/mtk_battery_cmd/en_power_path 1 0 ("::" is a placeholder for " " - MTK only)
 
   -t|--test [file]   Test charging switches from a file (default: $TMPDIR/ch-switches)
+    Implies -x, as in acc -x -t ...
     e.g.,
       acc -t (test known switches)
       acc -t /sdcard/experimental_switches.txt (test custom/foreign switches)
 
   -t|--test [p|parse]   Parse potential charging switches from the power supply log (as "acc -p"), test them all, and add the working ones to the list of known switches
-    Implies -x, as acc -x -t p
+    Implies -x, as in acc -x -t p
     e.g., acc -t p
 
   -T|--logtail   Monitor accd log (tail -F)
