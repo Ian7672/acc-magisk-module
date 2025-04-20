@@ -124,7 +124,7 @@ switch_fails() {
 }
 
 
-test_charging_switch() {
+test_charging_switch_() {
 
   local idleMode=false
   local failed=false
@@ -165,6 +165,16 @@ test_charging_switch() {
   else
     switch_fails
   fi
+}
+
+
+test_charging_switch() {
+  local ret=
+  lastNode=
+  grep -Eq "^(#$1|$1)$" $writeLog 2>/dev/null || { echo "#$1" >> $writeLog; lastNode=$1; }
+  test_charging_switch_ "$@"; ret=$?
+  [ -n "${lastNode-}" ] && { sed -i "\|^#${lastNode}$|s|^#||" $writeLog; lastNode=; }
+  return $ret
 }
 
 
@@ -268,7 +278,7 @@ defaultConfig=$execDir/default-config.txt
 . $execDir/logf.sh
 . $execDir/misc-functions.sh
 
-if [ "${1:-y}" = -x ] ||  eq "${2-}" "p|parse"; then
+if eq "${1-}" "--test|-t|-x"; then
   log=/sdcard/Download/acc-${device}.log
   [ $1 != -x ] || shift
 else
@@ -522,6 +532,7 @@ case "${1-}" in
     parsed=
     exitCode_=10
     exitCode=$exitCode_
+    writeLog=$dataDir/logs/write.log
     logF_=$dataDir/logs/acc-t_output-${device}.log
     logF=/sdcard/Download/acc-t_output-${device}_$(date +%Y-%m-%d_%H-%M-%S).log
 
@@ -550,6 +561,7 @@ case "${1-}" in
       fi
       cp -f $logF $logF_ 2>/dev/null
       ! $daemonWasUp || start-stop-daemon -bx $TMPDIR/.accdt -S --
+      [ -n "${lastNode-}" ] && sed -i "\|^#${lastNode}$|s|^#||" $writeLog
       exit $exitCode
     }
 
@@ -603,8 +615,7 @@ case "${1-}" in
       while read _chargingSwitch; do
         echo "x$_chargingSwitch" | grep -Eq '^x$|^x#' && continue
         [ -f "$(echo "$_chargingSwitch" | cut -d ' ' -f 1)" ] && {
-          { test_charging_switch $_chargingSwitch; echo $? > $TMPDIR/.exitCode; } \
-            | tee -a $logF
+          { test_charging_switch $_chargingSwitch; echo $? > $TMPDIR/.exitCode; } | tee -a $logF
           rm $TMPDIR/.sw 2>/dev/null || :
           swCount=$((swCount + 1))
           exitCode_=$(cat $TMPDIR/.exitCode)
@@ -621,8 +632,7 @@ case "${1-}" in
       done < ${1-$TMPDIR/ch-switches}
       echo
     else
-      { test_charging_switch "$@"; echo $? > $TMPDIR/.exitCode; } \
-        | tee -a $logF
+      { test_charging_switch "$@"; echo $? > $TMPDIR/.exitCode; } | tee -a $logF
       rm $TMPDIR/.sw 2>/dev/null || :
       exitCode=$(cat $TMPDIR/.exitCode)
       echo

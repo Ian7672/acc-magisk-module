@@ -406,7 +406,7 @@ write() {
 
   if [ -f "$2" ] && chown 0:0 $2 && chmod 0644 $2; then
     case "$(grep -E "^(#$2|$2)$" $f 2>/dev/null || :)" in
-      \#*) blacklisted=true;;
+      \#*) [ -z "${lastNode-}" ] && { blacklisted=true; i=x; } || { eval "echo $1 > $2" || i=x; };;
       */*) eval "echo $1 > $2" || i=x;;
       *) echo $2 >> $f
          eval "echo $1 > $2" || i=x;;
@@ -414,16 +414,20 @@ write() {
   else
     i=x
   fi
-  f="$(cat $2)" 2>/dev/null || :
-  rm $TMPDIR/.nowrite 2>/dev/null || :
-  [[ "$one" != */* ]] || one="$(cat $one)"
-  ! [[ -n "$f" && "$f" != "$one" ]] || {
-    touch $TMPDIR/.nowrite
-    i=x
+
+  [ $i = x ] || {
+    f="$(cat $2)" 2>/dev/null || :
+    rm $TMPDIR/.nowrite 2>/dev/null || :
+    [[ "$one" != */* ]] || one="$(cat $one)"
+    ! [[ -n "$f" && "$f" != "$one" ]] || {
+      touch $TMPDIR/.nowrite
+      i=x
+    }
+    if [ -n "${exitCode_-}" ]; then
+      [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
+    fi
   }
-  if [ -n "${exitCode_-}" ]; then
-    [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
-  fi
+
   [ $i = x ] && return ${3-1} || {
     for i in $(seq $seq); do
       if eval "echo $1 > $2"; then
