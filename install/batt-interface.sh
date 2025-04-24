@@ -18,7 +18,7 @@ not_charging() {
   local i=
   local j=
   local sw=
-  local _STI=${_STI:-15} # switch test iterations
+  local _STI=${_STI:-5} # switch test iterations
   local switch=${flip-}; flip=
   local curThen=$(cat $curThen)
   local chargingSwitch="${chargingSwitch[*]-}"
@@ -60,7 +60,7 @@ not_charging() {
         status ${1-} || return 1
       fi
       [ ! -f $TMPDIR/.nowrite ] || { rm $TMPDIR/.nowrite 2>/dev/null || :; break; }
-      [ $i = $_STI ] || usleep 2500000
+      [ $i = $_STI ] || sleep 1
     done
     [ "$switch" = on ] || return 1
   else
@@ -231,7 +231,7 @@ battStatus=$battStatus
 currFile=$currFile
 curThen=$curThen
 idleThreshold=${idleThreshold:-10}
-_STI=\${_STI:-15}
+_STI=\${_STI:-5}
 temp=$temp
 voltNow=$voltNow" > $TMPDIR/.batt-interface.sh
 

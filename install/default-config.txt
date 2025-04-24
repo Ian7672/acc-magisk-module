@@ -1,4 +1,4 @@
-configVerCode=202504200
+configVerCode=202504240
 
 allowIdleAbovePcap=true
 ampFactor=
@@ -101,7 +101,7 @@ runCmdOnPause=''
 
 # $_DPOL  discharge polarity (+|-)
 # $_status   Charging|Discharging|Idle
-# $_STI   switch test iterations (default: 15)
+# $_STI   switch test iterations (default: 5)
 # $batt   expands to the /sys/class/power_supply/battery (or equivalent) directory
 # $battCapacity   $batt/capacity file
 # $battStatus   $batt/status file
@@ -345,7 +345,7 @@ runCmdOnPause=''
 #
 # This is a list of comma or space-separated patterns matching Android package names.
 # When a matched app is running in the foreground, acc daemon enables idle mode.
-# e.g., acc -s ia=maps,pubg,codm,pokemon
+# e.g., acc -s ia=maps,codm,pokemon
 
 
 # lang (l) #
