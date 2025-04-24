@@ -589,7 +589,9 @@ case "${1-}" in
 
     if [ -z "${2-}" ]; then
       !  eq "${1-}" "p|parse" || parsed=$TMPDIR/.parsed
-      [ -z "$parsed" ] || {
+      if [ -z "$parsed" ]; then
+        rm $dataDir/logs/working-switches.log 2>/dev/null || :
+      else
         _parsed=$dataDir/logs/parsed.log
         if parse_switches > $parsed; then
           set -- $parsed
@@ -606,7 +608,7 @@ case "${1-}" in
           echo
           exit
         fi
-      }
+      fi
       swCount=1
       swTotal=$(wc -l ${1-$TMPDIR/ch-switches} | cut -d ' ' -f 1)
       sort -u $TMPDIR/ch-switches > $TMPDIR/ch-switches_
