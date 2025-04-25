@@ -831,11 +831,12 @@ Options
       acc -e 30m (recharge for 30 minutes)
       acc -e 4000mv (recharge to 4000mV)
 
-  -f|--force|--full [capacity] [additional opts/args]   Charge once to a given capacity (default: 100%), without restrictions
+  -f|--force|--full [capacity] [-a] [additional opts/args]   Charge once to a given capacity (default: 100%), without restrictions
     e.g.,
       acc -f 95 (charge to 95%)
       acc -f (charge to 100%)
       acc -f -s mcc=500 (charge to 100% with a 500 mA limit)
+      acc -f 90 -a (the -a (auto) tries to restart accd automatically shortly after the charger is unplugged; not supported by all devices)
 
   -F|--flash ["zip_file"]   Flash any zip files whose update-binary is a shell script
     e.g.,

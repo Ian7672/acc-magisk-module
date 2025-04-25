@@ -406,12 +406,17 @@ case "${1-}" in
       [0-9]*) [[ ".${3-}" != .-* ]] || { shift 2; _extra=true; };;
       -*) shift 1; _extra=true;;
     esac
-    ! $_extra || eval $TMPDIR/acca $config "$@"
+    ! $_extra || {
+      [ "$1" != -a ] || {
+        print '\n:; online || exec $TMPDIR/accd' >> $config
+        [ -z "${2-}" ] || shift
+      }
+      [ -z "${1-}" ] || eval $TMPDIR/acca $config "$@"
+    }
 
-    #print '\n:; online || exec $TMPDIR/accd' >> $config
     print_charging_enabled_until ${_two}%
-    print_restart_accd
-    notif "$(print_charging_enabled_until ${_two}%; print_restart_accd)"
+    [ "$1" = -a ] || print_restart_accd
+    notif "$(print_charging_enabled_until ${_two}%; [ "$1" = -a ] || print_restart_accd)"
     echo
     exec $TMPDIR/accd $config
   ;;
