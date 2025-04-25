@@ -245,12 +245,12 @@ In interactive mode, it also asks the user whether they want to download and ins
 ```
 #DC#
 
-configVerCode=202504200
+configVerCode=202504250
 
 allowIdleAbovePcap=true
 ampFactor=
 battStatusWorkaround=true
-capacity=(5 50 70 75 false)
+capacity=(5 101 70 75 false)
 cooldownCurrent=
 cooldownRatio=()
 currentWorkaround=false
@@ -260,7 +260,7 @@ offMid=true
 prioritizeBattIdleMode=true
 rebootResume=false
 resetBattStats=(false false false)
-temperature=(35 50 45 55)
+temperature=(45 50 40 55)
 tempLevel=0
 voltFactor=
 
@@ -525,7 +525,7 @@ runCmdOnPause=''
 # cooldown_capacity (cc) #
 #
 # Type: Integer (percentage)
-# Default: 50
+# Default: 101
 #
 # Battery level or millivolts at which the cooldown cycle starts.
 # Cooldown reduces battery stress induced by prolonged exposure to high temperature and high charging voltage.
@@ -559,7 +559,7 @@ runCmdOnPause=''
 # cooldown_temp (ct) #
 #
 # Type: Integer (°C)
-# Default: 35
+# Default: 45
 #
 # Temperature (°C) at which the cooldown cycle starts.
 # Cooldown reduces the battery degradation rate by lowering the device's temperature.
@@ -592,7 +592,7 @@ runCmdOnPause=''
 #
 # This is a list of comma or space-separated patterns matching Android package names.
 # When a matched app is running in the foreground, acc daemon enables idle mode.
-# e.g., acc -s ia=maps,pubg,codm,pokemon
+# e.g., acc -s ia=maps,codm,pokemon
 
 
 # lang (l) #
@@ -622,7 +622,7 @@ runCmdOnPause=''
 # max_temp (mt) # resume_temp (rt) #
 #
 # Type: Integer (°C)
-# Defaults: mt=50, rt=45
+# Defaults: mt=50, rt=40
 #
 # Those two work together and are NOT tied to the cooldown cycle.
 # At max_temp, charging is paused.
