@@ -1,88 +1,74 @@
-**v2024.2.25-rc (202402250)**
-
-- Ability to specify (regex) thermal management processes to temporarily suspend after disabling charging
-- [acc -c d string] Quotes are no longer mandatory
-- Fix config parsing issues
-- Optimize exec wrappers
-
-- Improve the stability of idleApps
-
+**v2025.5.1-dev (202505010)**
 - -c|--config h string   Print config help text associated with "string" (config variable, e.g., acc -c h rt (or resume_temp))
-- [acc -f] Don't use scripts from the default config & disengage as soon as the charger is unplugged, regardless of battery level; fix rt issue
-- [acc -i] Avoid duplicate lines & redundant information
-- [acc -p] Filter more useless sysfs nodes
-- Add timestamp to all non-stable flashable zips
-- Always replace one-line scripts with the same name (case-insensitive)
-- Fix idle detection issues
-- Support cooldown_current with temp_level as back-end (e.g., acc -s cdc=60% to limit current by 60%)
-- Support curl binary without --dns-server option (for upgrades)
-- Support Nexus 10 (manta)
-
-- [acc -p] Add filters
-- Also consider pc_port/online for plug state detection
-- Fix accd ungraceful stop issue
-- Minimize the use of subshells
-- Set idleAbovePcap threshold to (pause_capacity + 1)
-- Set millivolts idleAbovePcap threshold to (pause_capacity + 50)
-- Try honoring allowIdleAbovePcap=false only 2x at most, per accd session
-
-- [acc -p] Filter out more useless stuff
-- [acc -t] Add status column hint
-- [acc -t] Show currently set charging switche(s)
-- [accd] Miscellaneous fixes & optimizations
-- [allowIdleAbovePcap=false] Fall back to idle mode as soon as capacity <= pause_capacity
-- [Config updater] Remove redundant text
-- [Refactor] -b[c] restores previous installation; "c" includes the config
-- Fix current and voltage control files parsing logic
-- Optimize busybox handling
-- Patches for KSU/Apatch, install notes and "no reboot needed" workaround
-- Show applied config patches after upgrades (Android notification)
-- Simplify rt-mt logic
-
+- -s|--set file: Get config from file (in "acc -s" format)
+- [acc -c d string] Quotes are no longer mandatory
+- [acc -f] Don't use scripts from the default config; fix rt issue
+- [acc -p] Filter more irrelevant sysfs nodes
+- [acc -t] Add status column hint; show currently set charging switche(s)
+- acc -f [cap] -a tries to restart accd automatically shortly after the charger is unplugged; not supported by all devices
 - Add debug info to acc-t_output-${device}.log
-- Check dc/online as well for plug state info
-- Fix config printing issues
-- Lower switch test timeout
-- Optimize --info's output
-- Optimize battStatusWorkaround logic
-- Optimize mi_thermald dynamic suspend logic
-- Reset "auto switch" and move it to the end of the list only if unsolicitedResumes = 3, rather than 1
-- Reset switch (in auto-mode) if pbim changes via --set
-- Set defaults allow_idle_above_pcap=false & idle_threshold=30
-- Set discharge_polarity automatically even while charging
-- Support additional busybox paths (including Apatch's)
-
-- Improve charger plug detection
-
-- [push.sh] Support KernelSU
-- Fix typos in doc
-- Improve charger plug detection
-- Recommend trying temp_level if no regular current control file is found
-- Suppress missing current control file errors
-
-- Restore scheduler changes from v2023.11.26-dev
-
-- Implement idle_apps
-- Improve charger online detection
-- Make it possible to post multiple notifications with acc -n
-- Optimize current and voltage logic
-
-- Dynamically pause my_thermald to keep it from disabling idle mode
-- Fix issue with pc, rc, mt and rt null values
-- Fix wizard option 8 (uninstall)
-- Forbid mt - rt > 10 (fallback to rt = mt - 1)
-- Notifications include time
-- Parse current and voltage control files only once per boot session to avoid "false defaults"
-- Rewrite scheduling logic
-- Use hard instead of soft links for KernelSU/Magisk mount files
-
+- Additional switches & device-specific settings
+- Also consider dc/online and pc_port/online for plug state detection
+- Always sort switches before printing/testing
+- Auto re-init accd on exit code 7
+- Auto-set batt_status_workaround=false for msm8937
+- battStatusOverride: Support ${chargingSwitch[2]} as a file
+- Don't include trailing " --" in working switches list
+- Drop capacity_sync, discharge_polarity and idle_threshold config variables
+- Drop legacy AccA logic
+- Exclude battery/store_mode switch
+- Exclude current_cmd from mcc working list
+- Exclude switches whose num_system_temp_in_levels is null
+- Fix "acc -f [#] -s ..."
+- Fix "acc -u -f dev^1" syntax & related errors
+- Fix "chargingSwitch[2]: parameter not set"
+- Fix & optimize current and voltage handling logic
+- Fix 'acc -c a "..."'
+- Fixes for msm8953 (e.g., Moto Z Play)
 - Forbid control files modifications by 3rd-party
-- Improve online upgrade, temp_level and schedules logic
+- Forbid mt - rt > 10 (fallback to rt = mt - 1)
+- Get battery level info from Android's battery service if it differs from the kernel's (replaces capacity_sync)
+- Implement battery stats reset workaround
+- Implement idle_apps
+- Improve bootloop handling logic and debugging tools
 - In acc -c a ': sleep profile; at 22:00 "acc -s pc=60 mcc=500; acc -n \"sleep profile\""', the quotes are optional and all ";" can be replaced with ","
 - Include dmesg and logcat in log archive
+- Drop cooldownCustom
+- Drop thermal_suspend (users can still have something like ":; pkill -STOP -f mi_thermald" in config to suspend thermal management processes)
+- Lower switch test timeout
+- Make it possible to post multiple notifications with acc -n
+- Make the scheduler safer and aware of the "/dev/" prefix
+- Minimize the use of subshells
+- Notifications include timestamps
+- Overwrite control files values 6 times within a second to wake up lazy switches
+- Overwrite control files values upon issuing a disable/enable charging command, regardless of charging status
+- Parse current and voltage control files only once per boot session to avoid "false defaults"
+- Patches for KSU/Apatch, install notes and "no reboot needed" workaround
+- Recommend trying temp_level if no regular current control file is found
+- Reduce idle mode false positives when `bsw=true`
+- Reinforce uninstall confirmation
+- Reset "auto switch" and move it to the end of the list only if unsolicitedResumes = 3, rather than 1
+- Reset switch (in auto-mode) if pbim changes via --set
+- Reset working-switches.log on a full switch test
+- Rewrite battery info logic (acc -i, -w)
+- Rewrite discharge_polarity's logic - now dynamic and fully automatic
+- Set idleAbovePcap threshold to (pause_capacity + 1)
+- Set millivolts idleAbovePcap threshold to (pause_capacity + 50)
+- Show applied config patches after upgrades (Android notification)
+- Speed up acca --set for voltage and current limits
+- Start accd as soon as the lockscreen shows up (no unlocking required)
 - Support "," in place of "|" for egrep patterns (e.g., acc -i curr,volt; acc -w curr,volt; acc -sp cap,temp)
-- Support unquoted notify string (e.g., acc -n switched to sleep profile)
+- Support cooldown_current with temp_level as back-end (e.g., acc -s cdc=60% to limit current by 60%)
+- Support curl binary without --dns-server option (for upgrades)
+- Support more devices with unconventional battery interfaces
+- Support Nexus 10 (manta)
 - Suppress "Terminated" messages
+- Suppress missing current control file errors
+- Try honoring allowIdleAbovePcap=false only 2x at most, per accd session
+- Try wget if curl fails
+- Update docs & strings
+- Update installer; add magic overlayfs module support
+- Update simplified Chinese translations (by @H-xiaoH)
 
 
 **v2023.10.16 (202310160)**
