@@ -49,5 +49,12 @@ echo 1 > battery_ext/smart_charging_activation 2>/dev/null || :
 # avoid unexpected reboots
 ! _is_board '^CRO-L03$' || sed -i /current_cmd/d $TMPDIR/ch-switches
 
+# msm8953 (e.g., Moto Z Play)
+! _is_board msm8953 || {
+  _get_prop chargingSwitch | grep 'battery/charging_enabled 1 0 \-\-' >/dev/null \
+    || $TMPDIR/acca $config --set charging_switch="battery/charging_enabled 1 0 --"
+  grep -q '^:;_STI=35$' $config || echo ':;_STI=35' >> $config
+}
+
 unset -f _grep _get_prop _is_board _set_prop
 unset configVer defaultConfVer
