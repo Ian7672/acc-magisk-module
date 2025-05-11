@@ -538,9 +538,10 @@ case "${1-}" in
     exitCode=$exitCode_
     writeLog=$dataDir/logs/write.log
     logF_=$dataDir/logs/acc-t_output-${device}.log
-    logF=/sdcard/Download/acc-t_output-${device}_$(date +%Y-%m-%d_%H-%M-%S).log
+    : ${logF:=/sdcard/Download/acc-t_output-${device}_$(date +%Y-%m-%d_%H-%M-%S).log}
 
     shift
+    [ "${1:-x}" != q ] || shift
     print_wait
     print_unplugged
 

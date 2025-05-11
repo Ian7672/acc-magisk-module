@@ -129,4 +129,14 @@ esac
 
 # other acc commands
 set +eu
-exec $TMPDIR/acc $config "$@"
+[ "${2:-x}" != q ] && exec $TMPDIR/acc $config "$@" \
+  || {
+    export logF=$TMPDIR/.logf
+    $TMPDIR/acc $config "$@" >/dev/null
+    case $? in
+      0) echo Ok;;
+      15) echo Idle;;
+      *) echo Fail;;
+    esac
+    return $?
+  }
