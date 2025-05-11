@@ -1,9 +1,9 @@
 set_ch_volt() {
 
-  local f=$TMPDIR/.volt-default
+  local f=$TMPDIR/.volt-custom
   local isAccd=${isAccd:-false}
 
-  ! [[ -f $f && .${1-} = .- ]] || return 0
+  [[ ! -f $f && .${1-} = .- ]] && return 0 || :
 
   if [ -n "${1-}" ]; then
 
@@ -24,7 +24,7 @@ set_ch_volt() {
       apply_on_boot_ default force
       max_charging_voltage=
       $isAccd || print_volt_restored
-      touch $f
+      rm $f 2>/dev/null || :
 
     else
       apply_voltage() {
@@ -50,7 +50,7 @@ set_ch_volt() {
         $isAccd || echo "[3700-4300]$(print_mV; print_only)"
         apply_voltage 4300 ${2-} || return 1
       fi
-      rm $f 2>/dev/null || :
+      touch $f
     fi
 
   else

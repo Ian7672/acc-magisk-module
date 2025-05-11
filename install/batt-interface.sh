@@ -95,12 +95,12 @@ read_status() {
 
 
 set_temp_level() {
-  local f=$TMPDIR/.tl-default
+  local f=$TMPDIR/.tl-custom
   local a=
   local b=battery/siop_level
   local l=${1:-${tempLevel-}}
   [ -n "$l" ] || return 0
-  [[ $l -eq 0 && -f $f ]]  && return 0 || :
+  [[ $l -eq 0 && ! -f $f ]] && return 0 || :
   if [ -f $b ]; then
     chown 0:0 $b && chmod 0644 $b && echo $((100 - $l)) > $b && chmod 0444 $b || :
   else
@@ -119,7 +119,7 @@ set_temp_level() {
     fi
     chown 0:0 $b && chmod 0644 $b && echo $(( ($(cat $a) * l) / 100 )) > $b && chmod 0444 $b || :
   done
-  [ $l -eq 0 ] && touch $f || rm $f 2>/dev/null || :
+  [ $l -ne 0 ] && touch $f || rm $f 2>/dev/null || :
 }
 
 
@@ -195,11 +195,11 @@ if ${_INIT:-false}; then
   done
 
 
-  echo 0 > $TMPDIR/.dummy-curr
+  echo 0 > $TMPDIR/.dummy-mcc
 
   for currFile in rt*-charger/current_now battery/current_now $batt/current_now bms/current_now battery/?attery?verage?urrent \
     /sys/devices/platform/battery/power_supply/battery/?attery?verage?urrent \
-    ${battStatus%/*}/current_now $TMPDIR/.dummy-curr
+    ${battStatus%/*}/current_now $TMPDIR/.dummy-mcc
   do
     [ ! -f $currFile ] || break
   done
@@ -220,7 +220,7 @@ if ${_INIT:-false}; then
     ampFactor_=1000000
   fi
 
-  curThen=$TMPDIR/.curr
+  curThen=$TMPDIR/.mcc
   rm $curThen 2>/dev/null || :
 
 

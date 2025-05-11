@@ -6,7 +6,7 @@
 
 currCtrl=$TMPDIR/ch-curr-ctrl-files
 
-if [ ! -f $TMPDIR/.ch-curr-read ]; then
+if [ ! -f $TMPDIR/.mcc-read ]; then
 
   rm $currCtrl ${currCtrl}_ 2>/dev/null || :
   . $execDir/ctrl-files.sh
@@ -51,4 +51,4 @@ if [ ! -f $TMPDIR/.ch-curr-read ]; then
 fi
 
 rm ${currCtrl}_ $TMPDIR/.ctrl 2>/dev/null
-touch $TMPDIR/.ch-curr-read) || :
+touch $TMPDIR/.mcc-read) || :

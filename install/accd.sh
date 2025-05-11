@@ -182,7 +182,7 @@ if ! $_INIT; then
       [ -z "$chgStatusCode" ] && cmd_batt reset >/dev/null \
         && chgStatusCode=$(cmd_batt get status) || :
 
-      if [ -f $TMPDIR/.ch-curr-read ]; then
+      if [ -f $TMPDIR/.mcc-read ]; then
         # set charging current control files, as needed
         if [ -n "${maxChargingCurrent[0]-}" ] \
           && { [ -z "${maxChargingCurrent[1]-}" ] || [[ "${maxChargingCurrent[1]-}" = -* ]]; } \
@@ -417,7 +417,7 @@ if ! $_INIT; then
     local cmd=
     local curr=
     . $config
-    while [ -z "${_DPOL-}" ] && $battStatusWorkaround && [ $currFile != $TMPDIR/.dummy-curr ]; do
+    while [ -z "${_DPOL-}" ] && $battStatusWorkaround && [ $currFile != $TMPDIR/.dummy-mcc ]; do
       curr=$(cat $currFile)
       if [ $(cat $battStatus) = Charging ]; then
         if [ $curr -gt 0 ]; then
@@ -687,7 +687,7 @@ else
 
 
   # read charging voltage control files
-  rm $TMPDIR/.ch-curr-read 2>/dev/null
+  rm $TMPDIR/.mcc-read 2>/dev/null
   : > $TMPDIR/ch-volt-ctrl-files_
   ls -1 $(ls_volt_ctrl_files | grep -Ev '^#|^$') 2>/dev/null | \
     while read file; do

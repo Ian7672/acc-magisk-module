@@ -1,9 +1,9 @@
 set_ch_curr() {
 
-  local f=$TMPDIR/.curr-default
+  local f=$TMPDIR/.mcc-custom
   local isAccd=${isAccd:-false}
 
-  ! [[ -f $f && .${1-} = .- ]] || return 0
+  [[ ! -f $f && .${1-} = .- ]] && return 0 || :
 
   [[ .${1-} != .*% ]] || {
     set_temp_level ${1%\%}
@@ -11,7 +11,7 @@ set_ch_curr() {
   }
 
   # check support
-  [ -f $TMPDIR/.ch-curr-read ] || {
+  [ -f $TMPDIR/.mcc-read ] || {
     ! not_charging || {
       $isAccd || {
         print_read_curr
@@ -39,7 +39,7 @@ set_ch_curr() {
       apply_on_plug_ default
       max_charging_current=
       $isAccd || print_curr_restored
-      touch $f
+      rm $f 2>/dev/null || :
 
     else
 
@@ -65,7 +65,7 @@ set_ch_curr() {
         $isAccd || echo "[0-9999]$(print_mA; print_only)"
         return 11
       fi
-      rm $f 2>/dev/null || :
+      touch $f
     fi
 
   else
