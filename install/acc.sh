@@ -277,7 +277,7 @@ defaultConfig=$execDir/default-config.txt
 . $execDir/logf.sh
 . $execDir/misc-functions.sh
 
-if eq "${1-}" "--test|-t|-x"; then
+if eq "${1-}" "--test*|-t*|-x"; then
   log=/sdcard/Download/acc-${device}.log
   [ $1 != -x ] || shift
 else
@@ -531,7 +531,7 @@ case "${1-}" in
   ;;
 
 
-  -t|--test)
+  -t*|--test*)
 
     parsed=
     exitCode_=10
@@ -539,6 +539,10 @@ case "${1-}" in
     writeLog=$dataDir/logs/write.log
     logF_=$dataDir/logs/acc-t_output-${device}.log
     : ${logF:=/sdcard/Download/acc-t_output-${device}_$(date +%Y-%m-%d_%H-%M-%S).log}
+
+    __STI=${1#-t}
+    __STI=${__STI#--test}
+    [ -z "$__STI" ] || _STI=$__STI
 
     shift
     [ "${1:-x}" != q ] || shift
