@@ -33,6 +33,7 @@ battery/input_suspend 0 1 /proc/mtk_battery_cmd/en_power_path 1 1
 /sys/class/qcom-battery/input_suspend 0 1
 /sys/devices/*/*/*/charging_state enabled disabled
 /sys/devices/platform/*/*/*/charging_state enabled disabled
+/sys/devices/platform/charger/bypass_charger 0 1
 /sys/devices/platform/huawei_charger/enable_charger 1 0
 /sys/devices/platform/lge-unified-nodes/charging_completed 0 1
 /sys/devices/platform/lge-unified-nodes/charging_enable 1 0

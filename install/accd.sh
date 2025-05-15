@@ -259,11 +259,11 @@ if ! $_INIT; then
     sync_capacity
 
     set +u
-    if [ -n "${idleApps[0]}" ]; then
-      dumpsys activity top | sed -En 's/(.*ACTIVITY )(.*)(\/.*)/\2/p' \
+    [ -n "${idleApps[0]}" ] \
+      && dumpsys activity top | sed -En 's/(.*ACTIVITY )(.*)(\/.*)/\2/p' \
       | tail -n 1 | grep -E "$(echo ${idleApps[*]} | sed 's/ /|/g; s/,/|/g')" >/dev/null \
-      && capacity[3]=$(batt_cap) && capacity[2]=$((capacity[3] - 5)) || :
-    fi
+      && pause_now || :
+    [ $(cat /dev/encore_mode 2>/dev/null || print 0) -ne 1 ] || pause_now
     set -u
 
     # log buffer reset
@@ -410,6 +410,12 @@ if ! $_INIT; then
 
   mt_reached() {
     [ $(cat $temp) -ge $(( ${temperature[1]} * 10 )) ] && mtReached=true
+  }
+
+
+  pause_now() {
+    capacity[3]=$(batt_cap)
+    capacity[2]=$((capacity[3] - 5))
   }
 
 
