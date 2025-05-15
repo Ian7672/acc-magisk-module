@@ -377,8 +377,16 @@ case "${1-}" in
 
   -f|--force|--full)
 
-    [[ ".${2-}" = .-* ]] && _two= || _two="${2-}"
-    _two="${_two:-100}"
+    auto=false
+    cap=100
+    shift
+
+    for i in ${1-} ${2-}; do
+      [[ $i != [0-9]* ]] || cap=$i
+      [ $i != -a ] || auto=true
+      shift
+    done
+
     cp -f $config $TMPDIR/.acc-f-config
     config=$TMPDIR/.acc-f-config
     sed -i '/^:/d' $config
@@ -394,30 +402,22 @@ case "${1-}" in
     max_charging_voltage=
     max_temp=
     off_mid=false
-    pause_capacity=$_two
-    resume_capacity=$((_two - 2))
+    pause_capacity=$cap
+    resume_capacity=$((cap - 2))
     resume_temp=
     temp_level=
     . $execDir/write-config.sh)
 
-    # additional options
-    _extra=false
-    case "${2-}" in
-      [0-9]*) [[ ".${3-}" != .-* ]] || { shift 2; _extra=true; };;
-      -*) shift 1; _extra=true;;
-    esac
-    ! $_extra || {
-      [ "$1" != -a ] || {
-        print '\n:; online || exec $TMPDIR/accd' >> $config
-        [ -z "${2-}" ] || shift
-      }
-      [ -z "${1-}" ] || eval $TMPDIR/acca $config "$@"
-    }
+    ! $auto || print '\n:; online || exec $TMPDIR/accd' >> $config
+    [ -z "${1-}" ] || eval $TMPDIR/acca $config "$@"
 
-    print_charging_enabled_until ${_two}%
-    [ "$1" = -a ] || print_restart_accd
-    notif "$(print_charging_enabled_until ${_two}%; [ "$1" = -a ] || print_restart_accd)"
-    echo
+    print_charging_enabled_until ${cap}%
+    $auto || print_restart_accd
+    ! ${verbose:-true} || {
+      notif "$(print_charging_enabled_until ${cap}%; $auto || print_restart_accd)"
+      echo
+    }
+    unset auto cap i
     exec $TMPDIR/accd $config
   ;;
 
