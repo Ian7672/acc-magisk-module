@@ -245,7 +245,7 @@ In interactive mode, it also asks the user whether they want to download and ins
 ```
 #DC#
 
-configVerCode=202504250
+configVerCode=202505150
 
 allowIdleAbovePcap=true
 ampFactor=
@@ -348,7 +348,7 @@ runCmdOnPause=''
 
 # $_DPOL  discharge polarity (+|-)
 # $_status   Charging|Discharging|Idle
-# $_STI   switch test iterations (default: 5)
+# $_STI   switch test iterations (default: 35)
 # $batt   expands to the /sys/class/power_supply/battery (or equivalent) directory
 # $battCapacity   $batt/capacity file
 # $battStatus   $batt/status file
