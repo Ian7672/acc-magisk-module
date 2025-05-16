@@ -382,9 +382,8 @@ case "${1-}" in
     shift
 
     for i in ${1-} ${2-}; do
-      [[ $i != [0-9]* ]] || cap=$i
-      [ $i != -a ] || auto=true
-      shift
+      [[ $i != [0-9]* ]] || { cap=$i; shift; }
+      [ $i != -a ] || { auto=true; shift; }
     done
 
     cp -f $config $TMPDIR/.acc-f-config
