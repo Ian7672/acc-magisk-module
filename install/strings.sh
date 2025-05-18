@@ -88,7 +88,7 @@ Usage
 
   acc   Wizard
 
-  accd   Start/restart accd
+  accd [--init|-i]   Start/restart accd; -i triggers a clean restart (recreates runtime cache)
 
   accd.   Stop acc/daemon
 

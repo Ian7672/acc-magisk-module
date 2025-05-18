@@ -245,7 +245,7 @@ In interactive mode, it also asks the user whether they want to download and ins
 ```
 #DC#
 
-configVerCode=202505150
+configVerCode=202505180
 
 allowIdleAbovePcap=true
 ampFactor=
@@ -734,6 +734,7 @@ runCmdOnPause=''
 # At the highest level, charging current is blocked.
 # The stock values are generally integers, ranging from 0 to 6, 7 or so. siop_level (Samsung) ranges from 0 to 100).
 # For greater flexibility, this variable stores a percentage value, which is internally mapped to the system's scales.
+# Tip: If mcc is ignored under high temperature, but you still want it forced, try setting tl=1.
 
 #/DC#
 ```
@@ -762,7 +763,7 @@ Usage
 
   acc   Wizard
 
-  accd   Start/restart accd
+  accd [--init|-i]   Start/restart accd; -i triggers a clean restart (recreates runtime cache)
 
   accd.   Stop acc/daemon
 
