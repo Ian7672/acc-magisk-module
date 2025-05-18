@@ -55,7 +55,7 @@ printf "\n\n\n" >> $TMPDIR/.scripts
 }
 
 : ${mt:=50}
-: ${rt:=45}
+: ${rt:=40}
 
 ! [[ $rt -ge $mt || $((mt - $rt)) -gt 10 ]] || rt=$((mt - 1))
 
@@ -69,7 +69,7 @@ echo "configVerCode=$(cat $TMPDIR/.config-ver)
 allowIdleAbovePcap=${aiapc:-true}
 ampFactor=$af
 battStatusWorkaround=${bsw:-true}
-capacity=(${sc:-5} ${cc:-50} $rc $pc ${cm:-false})
+capacity=(${sc:-5} ${cc:-101} $rc $pc ${cm:-false})
 cooldownCurrent=$cdc
 cooldownRatio=($cch $cp)
 currentWorkaround=${cw:-false}
@@ -79,7 +79,7 @@ offMid=${om:-true}
 prioritizeBattIdleMode=${pbim:-true}
 rebootResume=${rr:-false}
 resetBattStats=(${rbsp:-false} ${rbsu:-false} ${rbspl:-false})
-temperature=(${ct:-35} ${mt:-50} ${rt:-45} ${st:-55})
+temperature=(${ct:-45} $mt $rt ${st:-55})
 tempLevel=${tl:-0}
 voltFactor=$vf
 
