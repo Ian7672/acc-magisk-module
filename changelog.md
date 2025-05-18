@@ -1,3 +1,15 @@
+**v2025.5.18-dev (202505180)**
+- acc -f fixes & enhancements
+- acca -t q ... (quiet test; reports Ok, Idle or Fail)
+- Add `/sys/devices/platform/charger/bypass_charger 0 1` switch (@Rem01Gaming)
+- Avoid needlessly forcing default current, temp_level and voltage
+- Config print includes acc version code
+- Fix new defaults not applying
+- Out of the box Encore Tweaks support
+- Set default `_STI=35`
+- Support acc -t[_STI] syntax
+- Update doc
+
 **v2025.5.1-dev (202505010)**
 - -c|--config h string   Print config help text associated with "string" (config variable, e.g., acc -c h rt (or resume_temp))
 - -s|--set file: Get config from file (in "acc -s" format)
@@ -70,7 +82,6 @@
 - Update installer; add magic overlayfs module support
 - Update simplified Chinese translations (by @H-xiaoH)
 
-
 **v2023.10.16 (202310160)**
 - "edit g" shall work with non-root apps (acc -h g, acc -l g, acc -la g)
 - -f supports additional options (e.g., acc -f -sc 500)
@@ -101,12 +112,3 @@
 - Updated documentation
 - Validate current control files only while charging
 - Wizard is more user-friendly
-
-**v2023.8.19 (202308190)**
-- 1936210 Fix print_quit error
-- 28d68bd Fix -f and temp_level
-- 08e2c3f Fix --upgrade
-- 6f69b45 Add constant_charge_current* control files
-- 312a429 Update resume_temp information
-- 2744859 Fix module info updater
-- 6dac4a7 resume_temp with trailing r always overrides resume_capacity
