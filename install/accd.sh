@@ -178,10 +178,6 @@ if ! $_INIT; then
 
     if $isCharging; then
 
-      # set chgStatusCode
-      [ -z "$chgStatusCode" ] && dsys_batt reset >/dev/null \
-        && chgStatusCode=$(dsys_batt get status) || :
-
       if [ -f $TMPDIR/.mcc-read ]; then
         # set charging current control files, as needed
         if [ -n "${maxChargingCurrent[0]-}" ] \
@@ -239,10 +235,6 @@ if ! $_INIT; then
             /system/bin/reboot || reboot
           }
         } || :
-
-      # set dischgStatusCode
-      [ -z "$dischgStatusCode" ] && dsys_batt reset >/dev/null \
-        && dischgStatusCode=$(dsys_batt get status)
 
       $cooldown || {
         resetBattStatsOnPlug=true
@@ -329,7 +321,7 @@ if ! $_INIT; then
           _lt_pause_cap && [ $(cat $temp) -lt $(( ${temperature[1]} * 10 )) ] && is_charging || break
 
           if [ -z "${cooldownCurrent-}" ]; then
-            dsys_batt set status $chgStatusCode
+            dsys_batt set ac 1
             disable_charging
             sleep ${cooldownRatio[1]:-${loopDelay[0]}}
             enable_charging
@@ -478,14 +470,7 @@ if ! $_INIT; then
       [ $maskedCap -ge 2 ] || maskedCap=2
 
       ! $cooldown || isCharging=true
-
-      if $isCharging; then
-        dsys_batt set ac 1
-        dsys_batt set status $chgStatusCode
-      else
-        dsys_batt unplug
-        dsys_batt set status $dischgStatusCode
-      fi
+      $isCharging && dsys_batt set ac 1 || dsys_batt unplug
 
       isCharging=$isCharging_
       dsys_batt set level $maskedCap
