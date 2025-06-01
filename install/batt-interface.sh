@@ -248,5 +248,6 @@ fi
 batt_cap() {
   local l=$(dsys_batt get level)
   local l2=$(cat $battCapacity)
+  ${capacity[4]} && echo $l2 && return 0 || :
   [ -n "$l" ] && echo $l || echo $l2
 }

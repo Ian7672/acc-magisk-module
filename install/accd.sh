@@ -455,7 +455,7 @@ if ! $_INIT; then
 
     isCharging=${isCharging:-false}
     local isCharging_=$isCharging
-    local battCap=$(cat $battCapacity)
+    local battCap=$(batt_cap)
     local maskedCap=
 
     if ${capacity[4]} && [ ${capacity[3]} -le 100 ]; then

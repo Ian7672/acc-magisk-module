@@ -35,7 +35,7 @@ batt_info() {
     { grep . $battCapacity $battStatus $currFile $temp $voltNow 2>/dev/null || :; } \
       | sed "s|.*/||; s/:/ /; s/^batt_vol/voltage_now/; s/^batt_temp/temp/;
         s/^status .*/status $_status/; s/batteryaveragecurrent/current_now/;
-        s/^capacity .*/level $(batt_cap)%/; s/^temp .*/temp $(($(cat $temp) / 10))℃/" | sort
+        s/^capacity .*/level $(capacity[4]=false batt_cap)%/; s/^temp .*/temp $(($(cat $temp) / 10))℃/" | sort
   )"
 
 
@@ -97,6 +97,10 @@ consumed_watts $consumed_watts"
   echo
   grep . */online | sed -E 's/:(.)$/ \1/'
 
+  ! ${capacity[4]} || {
+    echo
+    echo real_level $(cat $battCapacity)%
+  }
 
   } | grep -Ei "${one:-.*}" || :
 }
