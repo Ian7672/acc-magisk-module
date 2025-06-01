@@ -655,7 +655,9 @@ case "${1-}" in
 
 
   -T|--logtail)
-    tail -F $TMPDIR/accd-*.log
+    arg="${2-}"
+    arg="${arg//,/|}"
+    tail -F $TMPDIR/accd-*.log | grep -E "${arg:-.}"
   ;;
 
   -u|--upgrade)

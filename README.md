@@ -972,8 +972,10 @@ Options
     [q]: acca -t q ... (quiet test; reports Ok, Idle or Fail)
     e.g., acc -t p
 
-  -T|--logtail   Monitor accd log (tail -F)
-    e.g., acc -T
+  -T|--logtail ['egrep regex, with "," in place of "|"']   Monitor accd log (tail -F)
+    e.g.,
+      acc -T
+      acc -T 'cap,enable'
 
   -u|--upgrade [-c|--changelog] [-f|--force] [-n|--non-interactive]   Online upgrade/downgrade
     e.g.,
