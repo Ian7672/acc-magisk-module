@@ -51,7 +51,7 @@ printf "\n\n\n" >> $TMPDIR/.scripts
 : ${rc:=70}
 
 [ $rc -lt $pc ] || {
-  [ $pc -gt 3000 ] && rc=$((pc - 50)) || rc=$((pc - 5))
+  [ $pc -gt 3000 ] && rc=$((pc - 150)) || rc=$((pc - 5))
 }
 
 : ${mt:=50}

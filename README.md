@@ -1510,7 +1510,7 @@ IMPORTANT: lithium batteries have the longest lifespan when kept about 40-60% ch
 Not all devices support the "native" idle mode. Hence, variants of "emulated" idle mode are available:
 
 1. Limit the charging voltage (requires kernel support) to a value that gets you close to the desired battery level. To avoid false positives, determine the value only after the device has been unplugged for a minute or so.
-2. Pause/resume charging based on voltage thresholds (e.g., acc 3900 keeps voltage within 3850 and 3900 millivolts).
+2. Pause/resume charging based on voltage thresholds (e.g., acc 3950 keeps voltage within 3800 and 3950 millivolts).
 3. Set resume_capacity to (pause_capacity - 1), e.g., acc 50 49.
 
 Notes
