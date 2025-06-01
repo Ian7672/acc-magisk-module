@@ -102,14 +102,14 @@ set_temp_level() {
   [ -n "$l" ] || return 0
   [[ $l -eq 0 && ! -f $f ]] && return 0 || :
   if [ -f $b ]; then
-    chown 0:0 $b && chmod 0644 $b && echo $((100 - $l)) > $b && chmod 0444 $b || :
+    chmod a+w $b && echo $((100 - $l)) > $b || :
   else
     for a in */num_system_temp*levels; do
       b=$(echo $a | sed 's/\/num_/\//; s/s$//')
       if [ ! -f $a ] || [ ! -f $b ]; then
         continue
       fi
-      chown 0:0 $b && chmod 0644 $b && echo $(( ($(cat $a) * l) / 100 )) > $b && chmod 0444 $b || :
+      chmod a+w $b && echo $(( ($(cat $a) * l) / 100 )) > $b || :
     done
   fi
   for a in */charge_control_limit_max; do
@@ -117,7 +117,7 @@ set_temp_level() {
     if [ ! -f $a ] || [ ! -f $b ]; then
       continue
     fi
-    chown 0:0 $b && chmod 0644 $b && echo $(( ($(cat $a) * l) / 100 )) > $b && chmod 0444 $b || :
+    chmod a+w $b && echo $(( ($(cat $a) * l) / 100 )) > $b || :
   done
   [ $l -ne 0 ] && touch $f || rm $f 2>/dev/null || :
 }

@@ -402,7 +402,7 @@ write() {
   local f=$dataDir/logs/write.log
   blacklisted=false
 
-  if [ -f "$2" ] && chown 0:0 $2 && chmod 0644 $2; then
+  if [ -f "$2" ] && chmod a+w $2; then
     case "$(grep -E "^(#$2|$2)$" $f 2>/dev/null || :)" in
       \#*) [ -z "${lastNode-}" ] && { blacklisted=true; i=x; } || { eval "echo $1 > $2" || i=x; };;
       */*) eval "echo $1 > $2" || i=x;;
@@ -434,7 +434,6 @@ write() {
         return 1
       fi
     done
-    chmod 0444 $2
   }
 }
 

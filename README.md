@@ -1396,7 +1396,7 @@ Some devices allow that to be modified. If that's the case for you, use `apply_o
 
 If your battery's thermistor always reports a negative value, and charging is very slow or even off, see if the following helps (paste and run):
 
-`acc -c d temp_cool; acc -c a ':; for i in */temp_cool */temp_cold; do [ -f $i ] || continue; chown 0:0 $i && chmod 0644 $i && echo "-999" > $i && chown 0444 $i || :; done'`
+`acc -c d temp_cool; acc -c a ':; for i in */temp_cool */temp_cold; do [ -f $i ] || continue; chmod a+w $i && echo "-999" > $i || :; done'`
 
 
 ---

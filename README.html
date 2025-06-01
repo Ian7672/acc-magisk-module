@@ -2510,7 +2510,7 @@ There are no negative consequences when it doesn't.</p>
 Some devices allow that to be modified. If that's the case for you, use <code>apply_on_boot</code> to set the desired value(s) in <code>/sys/class/power_supply/*/charge_full_design</code>.</p>
 <div class="markdown-heading"><h3 class="heading-element">Override Broken Temperature Sensor</h3><a id="user-content-override-broken-temperature-sensor" class="anchor" aria-label="Permalink: Override Broken Temperature Sensor" href="#override-broken-temperature-sensor"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <p>If your battery's thermistor always reports a negative value, and charging is very slow or even off, see if the following helps (paste and run):</p>
-<p><code>acc -c d temp_cool; acc -c a ':; for i in */temp_cool */temp_cold; do [ -f $i ] || continue; chown 0:0 $i &amp;&amp; chmod 0644 $i &amp;&amp; echo "-999" &gt; $i &amp;&amp; chown 0444 $i || :; done'</code></p>
+<p><code>acc -c d temp_cool; acc -c a ':; for i in */temp_cool */temp_cold; do [ -f $i ] || continue; chmod a+w $i &amp;&amp; echo "-999" &gt; $i || :; done'</code></p>
 <hr>
 <div class="markdown-heading"><h2 class="heading-element">FREQUENTLY ASKED QUESTIONS (FAQ)</h2><a id="user-content-frequently-asked-questions-faq" class="anchor" aria-label="Permalink: FREQUENTLY ASKED QUESTIONS (FAQ)" href="#frequently-asked-questions-faq"><span aria-hidden="true" class="octicon octicon-link"></span></a></div>
 <blockquote>
