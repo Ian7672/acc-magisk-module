@@ -105,7 +105,7 @@ if ! $_INIT; then
     [ -n "$1" ] && exitCode=$1
     [ -n "$2" ] && print "$2"
     $persistLog || exec > /dev/null 2>&1
-    cmd_batt reset >/dev/null
+    dsys_batt reset >/dev/null
     grep -Ev '^$|^#' $config > $TMPDIR/.config
     config=$TMPDIR/.config
     applyOnPlug=(${applyOnPlug[*]-} ${applyOnBoot[*]-})
@@ -179,8 +179,8 @@ if ! $_INIT; then
     if $isCharging; then
 
       # set chgStatusCode
-      [ -z "$chgStatusCode" ] && cmd_batt reset >/dev/null \
-        && chgStatusCode=$(cmd_batt get status) || :
+      [ -z "$chgStatusCode" ] && dsys_batt reset >/dev/null \
+        && chgStatusCode=$(dsys_batt get status) || :
 
       if [ -f $TMPDIR/.mcc-read ]; then
         # set charging current control files, as needed
@@ -240,9 +240,9 @@ if ! $_INIT; then
           }
         } || :
 
-      # set dischgStatusCode and capacitySync
-      [ -z "$dischgStatusCode" ] && cmd_batt reset >/dev/null \
-        && dischgStatusCode=$(cmd_batt get status)
+      # set dischgStatusCode
+      [ -z "$dischgStatusCode" ] && dsys_batt reset >/dev/null \
+        && dischgStatusCode=$(dsys_batt get status)
 
       $cooldown || {
         resetBattStatsOnPlug=true
@@ -256,7 +256,7 @@ if ! $_INIT; then
       }
     fi
 
-    sync_capacity
+    mask_capacity
 
     set +u
     [ -n "${idleApps[0]}" ] \
@@ -329,11 +329,10 @@ if ! $_INIT; then
           _lt_pause_cap && [ $(cat $temp) -lt $(( ${temperature[1]} * 10 )) ] && is_charging || break
 
           if [ -z "${cooldownCurrent-}" ]; then
-            cmd_batt set status $chgStatusCode
+            dsys_batt set status $chgStatusCode
             disable_charging
             sleep ${cooldownRatio[1]:-${loopDelay[0]}}
             enable_charging
-            $capacitySync || cmd_batt reset >/dev/null
             sleep ${cooldownRatio[0]:-${loopDelay[0]}}
           else
             (set_ch_curr ${cooldownCurrent:--} || :)
@@ -458,54 +457,42 @@ if ! $_INIT; then
   }
 
 
-  sync_capacity() {
-    is_android || return 0
-    if ${capacity[4]}; then
-      capacitySync=true
-      isCharging=${isCharging:-false}
-      local isCharging_=$isCharging
-      local battCap=$(batt_cap)
+  mask_capacity() {
 
-      ! ${capacity[4]} || {
-        if [ ${capacity[3]} -gt 3000 ]; then
-          local maskedCap=$battCap
-        else
-          local maskedCap=
-          if [ ${capacity[0]} -le 0 ]; then
-            maskedCap=$(calc $battCap \* 100 / ${capacity[3]} | xargs printf %.f)
-          else
-            maskedCap=$(calc "($battCap - ${capacity[0]}) * 100 / (${capacity[3]} - ${capacity[0]})" | xargs printf %.f)
-          fi
-          [ $maskedCap -le 100 ] || maskedCap=100
-        fi
-      }
+    is_android || return 0
+
+    isCharging=${isCharging:-false}
+    local isCharging_=$isCharging
+    local battCap=$(cat $battCapacity)
+    local maskedCap=
+
+    if ${capacity[4]} && [ ${capacity[3]} -le 100 ]; then
+
+      if [ ${capacity[0]} -le 0 ]; then
+        maskedCap=$(calc $battCap \* 100 / ${capacity[3]} | xargs printf %.f)
+      else
+        maskedCap=$(calc "($battCap - ${capacity[0]}) * 100 / (${capacity[3]} - ${capacity[0]})" | xargs printf %.f)
+      fi
+
+      [ $maskedCap -le 100 ] || maskedCap=100
+      [ $maskedCap -ge 2 ] || maskedCap=2
 
       ! $cooldown || isCharging=true
 
       if $isCharging; then
-        cmd_batt set ac 1
-        cmd_batt set status $chgStatusCode
+        dsys_batt set ac 1
+        dsys_batt set status $chgStatusCode
       else
-        cmd_batt unplug
-        cmd_batt set status $dischgStatusCode
+        dsys_batt unplug
+        dsys_batt set status $dischgStatusCode
       fi
 
       isCharging=$isCharging_
+      dsys_batt set level $maskedCap
+      dsys_batt set temp $(cat $temp)
 
-      [ $battCap -lt 2 ] || {
-        if ${capacity[4]}; then
-          cmd_batt set level $maskedCap
-          cmd_batt set temp $(cat $temp)
-        else
-          cmd_batt set level $battCap
-          cmd_batt set temp $(cat $temp)
-        fi
-      }
     else
-      ! $capacitySync || {
-        cmd_batt reset >/dev/null
-        capacitySync=false
-      }
+      dsys_batt reset >/dev/null
     fi
   }
 
@@ -516,7 +503,6 @@ if ! $_INIT; then
 
   xIdle=false
   xIdleCount=0
-  capacitySync=false
   chDisabledByAcc=false
   chgStatusCode=""
   cooldown=false

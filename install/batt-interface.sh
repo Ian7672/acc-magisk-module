@@ -246,7 +246,7 @@ fi
 [ -f $curThen ] || echo null > $curThen
 
 batt_cap() {
-  local l=$(cmd_batt get level)
+  local l=$(dsys_batt get level)
   local l2=$(cat $battCapacity)
   [ -n "$l" ] && echo $l || echo $l2
 }

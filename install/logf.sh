@@ -32,7 +32,7 @@ logf() {
     . $execDir/batt-info.sh
     (cd /sys/class/power_supply/
     batt_info > $TMPDIR/.logf/acc-i.txt)
-    dumpsys battery > dumpsys-battery.txt
+    dsys_batt > dumpsys-battery.txt
     ln -f ../*.txt ../*.log ./ 2>/dev/null
 
     tar -hc *.log *.txt | gzip -9 > $dataDir/logs/acc-logs-$device.tgz

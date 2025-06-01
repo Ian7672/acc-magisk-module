@@ -4,21 +4,29 @@ is_android() {
     && pgrep -f zygote >/dev/null
 }
 
-# cmd battery and dumpsys wrappers
+
+# dumpsys wrappers
+
 if is_android; then
-  cmd_batt() {
+
+  dumpsys() { /system/bin/dumpsys "$@" || :; }
+
+  dsys_batt() {
     if [ $1 = get ]; then
-      { dumpsys battery | sed -n "s/^  $2: //p"; } 2>/dev/null || :
+      dumpsys battery | sed -n "s/^  $2: //p"
     else
-      /system/bin/cmd battery "$@" < /dev/null 2>/dev/null || :
+      dumpsys battery "$@"
     fi
   }
-  dumpsys() { /system/bin/dumpsys "$@" 2>/dev/null || :; }
+
 else
-  cmd_batt() { :; }
+
+  dsys_batt() { :; }
+
   dumpsys() { :; }
   ! ${isAccd:-false} || {
     chgStatusCode=0
     dischgStatusCode=0
   }
+
 fi

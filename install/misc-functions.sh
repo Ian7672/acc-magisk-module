@@ -359,10 +359,10 @@ resetbs() {
   set +e
   dumpsys batterystats --reset
   rm -rf /data/system/battery*stats*
-  dumpsys battery set ac 1
-  dumpsys battery set level 100
+  dsys_batt set ac 1
+  dsys_batt set level 100
   sleep 2
-  dumpsys battery reset
+  dsys_batt reset
   set -e
 } &>/dev/null
 
@@ -386,7 +386,7 @@ wait_plug() {
   }
   while ! online; do
     sleep ${loopDelay[1]}
-    ! $isAccd || sync_capacity 2>/dev/null || :
+    ! $isAccd || mask_capacity 2>/dev/null || :
     set +x
   done
   log_on
