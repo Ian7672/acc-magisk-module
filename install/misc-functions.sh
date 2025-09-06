@@ -7,10 +7,11 @@ apply_on_boot() {
   local arg=${1:-value}
   local exitCmd=false
   local force=false
+  local oppositeValue=
 
   [ ${2:-x} != force ] || force=true
 
-  [[ "${applyOnBoot[*]-}${maxChargingVoltage[*]-}" != *--exit* ]] || exitCmd=true
+  ! tt "${applyOnBoot[*]-}${maxChargingVoltage[*]-}" "*--exit*" || exitCmd=true
 
   for entry in ${applyOnBoot[@]-} ${maxChargingVoltage[@]-}; do
     set -- ${entry//::/ }
@@ -22,12 +23,10 @@ apply_on_boot() {
     else
       default=${3:-${2-}}
     fi
-    set +e
-    write \$$arg $file 0 &
-    set -e
+    [ $arg = default ] && oppositeValue="$value" || oppositeValue="$default"
+    write \$$arg $file 0 || :
   done
 
-  wait
   $exitCmd && [ $arg = value ] && exit 0 || :
 }
 
@@ -39,6 +38,7 @@ apply_on_plug() {
   local value=
   local default=
   local arg=${1:-value}
+  local oppositeValue=
 
   for entry in ${applyOnPlug[@]-} ${maxChargingVoltage[@]-} \
     ${maxChargingCurrent[@]:-$([ .$arg != .default ] || cat $TMPDIR/ch-curr-ctrl-files 2>/dev/null || :)}
@@ -48,25 +48,26 @@ apply_on_plug() {
     file=${1-}
     value=${2-}
     default=${3:-${2-}}
-    set +e
-    write \$$arg $file 0 &
-    set -e
+    [ $arg = default ] && oppositeValue="$value" || oppositeValue="$default"
+    write \$$arg $file 0 || :
   done
-
-  wait
 }
 
 
 at() {
-  ${isAccd:-false} || return 0
-  local file=$TMPDIR/schedules/${1/:}
-  if [ ! -f $file ] && [ $(date +%H%M) -ge ${file##*/} ] && [ $(date +%H) -eq ${1%:*} ]; then
+  local one=$1
+  local time=$(date +%H:%M)
+  local file=$TMPDIR/schedules/$one
+  shift
+  if [ ! -f $file ] && [ ${one#0} = ${time#0} ]; then
     mkdir -p ${file%/*}
-    shift
-    echo "$@" | sed 's/,/\;/g; s|^acc|/dev/acc|g; s| acc| /dev/acc|g' > $file
-    . $file || :
-  elif [ $(date +%H%M) -lt ${file##*/} ]; then
-    rm $file 2>/dev/null || :
+    echo "#!/system/bin/sh
+      sleep 60
+      rm $file
+      exit" > $file
+    chmod 0755 $file
+    start-stop-daemon -bx $file -S --
+    eval "$@"
   fi
 }
 
@@ -80,8 +81,6 @@ cycle_switches() {
 
   local on=
   local off=
-
-  touch $TMPDIR/.testingsw
 
   while read -A chargingSwitch; do
 
@@ -108,8 +107,6 @@ cycle_switches() {
       fi
     }
   done < $TMPDIR/ch-switches
-
-  rm $TMPDIR/.testingsw
 }
 
 
@@ -126,9 +123,11 @@ disable_charging() {
 
   local autoMode=true
 
-    [[ "${chargingSwitch[*]-}" != *\ -- ]] || autoMode=false
+  not_charging || {
 
-    if [[ "${chargingSwitch[0]-}" = */* ]]; then
+    ! tt "${chargingSwitch[*]-}" "*--" || autoMode=false
+
+    if tt "${chargingSwitch[0]-}" "*/*"; then
       if [ -f ${chargingSwitch[0]} ]; then
         if ! { flip_sw off && not_charging; }; then
           $isAccd || print_switch_fails "${chargingSwitch[@]-}"
@@ -146,24 +145,22 @@ disable_charging() {
     fi
 
     if $autoMode && ! not_charging; then
-      #return 7 # total failure
-      notif "⚠️ Exit 7; accd is re-initializing"
-      exec $TMPDIR/accd $config --init
+      return 7 # total failure
     fi
 
     (set +eux; eval '${runCmdOnPause-}') || :
     chDisabledByAcc=true
+  }
 
   if [ -n "${1-}" ]; then
     case $1 in
       *%)
         print_charging_disabled_until $1
         echo
-        set +x
-        until [ $(batt_cap) -le ${1%\%} ]; do
+        (set +x
+        until [ $(cat $battCapacity) -le ${1%\%} ]; do
           sleep ${loopDelay[1]}
-        done
-        log_on
+        done)
         enable_charging
       ;;
       *[hms])
@@ -179,11 +176,10 @@ disable_charging() {
       *m[vV])
         print_charging_disabled_until $1 v
         echo
-        set +x
+        (set +x
         until [ $(volt_now) -le ${1%m*} ]; do
           sleep ${loopDelay[1]}
-        done
-        log_on
+        done)
         enable_charging
       ;;
       *)
@@ -198,6 +194,9 @@ disable_charging() {
 
 enable_charging() {
 
+  ! not_charging || {
+
+    set_temp_level
     [ ! -f $TMPDIR/.sw ] || (. $TMPDIR/.sw; rm $TMPDIR/.sw; flip_sw on) 2>/dev/null || :
 
     if ! $ghostCharging || { $ghostCharging && online; }; then
@@ -205,15 +204,15 @@ enable_charging() {
       flip_sw on || cycle_switches on
 
       # detect and block ghost charging
-      # if ! $ghostCharging && ! not_charging && ! online \
-      #   && sleep ${loopDelay[0]} && ! not_charging && ! online
-      # then
-      #   ghostCharging=true
-      #   disable_charging > /dev/null
-      #   touch $TMPDIR/.ghost-charging
-      #   wait_plug
-      #   return 0
-      # fi
+      if ! $ghostCharging && ! not_charging && ! online \
+        && sleep ${loopDelay[0]} && ! not_charging && ! online
+      then
+        ghostCharging=true
+        disable_charging > /dev/null
+        touch $TMPDIR/.ghost-charging
+        wait_plug
+        return 0
+      fi
 
     else
       wait_plug
@@ -221,19 +220,17 @@ enable_charging() {
     fi
 
     chDisabledByAcc=false
-
-  set_temp_level
+  }
 
   if [ -n "${1-}" ]; then
     case $1 in
       *%)
         print_charging_enabled_until $1
         echo
-        set +x
-        until [ $(batt_cap) -ge ${1%\%} ]; do
+        (set +x
+        until [ $(cat $battCapacity) -ge ${1%\%} ]; do
           sleep ${loopDelay[0]}
-        done
-        log_on
+        done)
         disable_charging
       ;;
       *[hms])
@@ -249,11 +246,10 @@ enable_charging() {
       *m[vV])
         print_charging_enabled_until $1 v
         echo
-        set +x
+        (set +x
         until [ $(volt_now) -ge ${1%m*} ]; do
           sleep ${loopDelay[0]}
-        done
-        log_on
+        done)
         disable_charging
       ;;
       *)
@@ -266,20 +262,12 @@ enable_charging() {
 }
 
 
-# condensed "case...esac"
-eq() {
-  eval "case \"$1\" in
-    $2) return 0;;
-  esac"
-  return 1
-}
-
-
 flip_sw() {
 
   flip=$1
   local on=
   local off=
+  local oppositeValue=
 
   set -- ${chargingSwitch[@]-}
   [ -f ${1:-//} ] || return 2
@@ -295,7 +283,7 @@ flip_sw() {
       off="$(parse_value "$3")"
     fi
 
-    [ $flip = on ] || cat $currFile > $curThen
+    [ $flip = on ] && oppositeValue="$off" || { oppositeValue="$on"; cat $currFile > $curThen; }
     write \$$flip $1 || return 1
 
     [ $# -lt 3 ] || shift 3
@@ -312,10 +300,10 @@ invalid_switch() {
 }
 
 
-log_on() {
-  [ ! -f ${log:-//} ] || {
-    [[ $log = */accd-* ]] && set -x || set -x 2>>$log
-  }
+is_android() {
+  [ ! -d /data/usbmsc_mnt/ ] && [ -x /system/bin/dumpsys ] \
+    && ! tt "$(readlink -f $execDir)" "*com.termux*" \
+    && pgrep -f zygote >/dev/null
 }
 
 
@@ -325,51 +313,59 @@ misc_stuff() {
   [ -f $config ] || cat $execDir/default-config.txt > $config
 
   # custom config path
-  ! eq "${1-}" "*/*" || {
-    [ -f $1 ] || cp $config $1
-    config=$1
-  }
+  case "${1-}" in
+    */*)
+      [ -f $1 ] || cp $config $1
+      config=$1
+    ;;
+  esac
   unset -f misc_stuff
 }
 
 
 notif() {
-  su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"🔋ACC | $(date +%H:%M)\" "Tag$(date +%s)" \"${*:-:)}\"" < /dev/null > /dev/null 2>&1 || :
+  su -lp ${2:-2000} -c "/system/bin/cmd notification post -S bigtext -t '🔋ACC' 'Tag' \"${1:-:)}\"" < /dev/null > /dev/null 2>&1 || :
 }
 
 
 parse_value() {
   if [ -f "$1" ]; then
-    chmod a+r $1 && cat $1 || echo 20
+    chmod a+r $1 2>/dev/null || :
+    cat $1
   else
     echo "$1" | sed 's/::/ /g'
-  fi 2>/dev/null
+  fi
 }
 
 
 print_header() {
   echo "Advanced Charging Controller (ACC) $accVer ($accVerCode)
-(C) 2017-2024, VR25
+(C) 2017-2023, VR25
 GPLv3+"
 }
 
 
-resetbs() {
-  is_android || return 0
-  set +e
-  dumpsys batterystats --reset
-  rm -rf /data/system/battery*stats*
-  dsys_batt set ac 1
-  dsys_batt set level 100
-  sleep 2
-  dsys_batt reset
-  set -e
-} &>/dev/null
+print_wait_plug() {
+  print_unplugged
+}
 
 
-sdp() {
-  _DPOL=$1
-  echo _DPOL=$1 >> $TMPDIR/.batt-interface.sh
+src_cfg() {
+  /system/bin/sh -n $config 2>/dev/null || cat $execDir/default-config.txt > $config
+  . $config
+}
+
+
+# test
+t() { test "$@"; }
+
+
+# extended test
+tt() {
+  eval "case \"$1\" in
+    $2) return 0;;
+  esac"
+  return 1
 }
 
 
@@ -382,57 +378,44 @@ unset_switch() {
 wait_plug() {
   $isAccd || {
     echo "ghostCharging=true"
-    print_unplugged
+    print_wait_plug
   }
-  while ! online; do
+  (while ! online; do
     sleep ${loopDelay[1]}
-    ! $isAccd || mask_capacity 2>/dev/null || :
+    ! $isAccd || sync_capacity 2>/dev/null || :
     set +x
-  done
-  log_on
+  done)
   enable_charging "$@"
 }
 
 
 write() {
-
   local i=y
-  local seq=5
-  local one="$(eval echo $1)"
   local f=$dataDir/logs/write.log
   blacklisted=false
-
-  if [ -f "$2" ] && chmod a+w $2; then
+  if [ -f "$2" ] && chown 0:0 $2 && chmod 0644 $2; then
     case "$(grep -E "^(#$2|$2)$" $f 2>/dev/null || :)" in
-      \#*) [ -z "${lastNode-}" ] && { blacklisted=true; i=x; } || { eval "echo $1 > $2" || i=x; };;
+      \#*) blacklisted=true;;
       */*) eval "echo $1 > $2" || i=x;;
-      *) echo $2 >> $f
-         eval "echo $1 > $2" || i=x;;
+      *) echo \#$2 >> $f
+         eval "echo $1 > $2" || i=x
+         sed -i "s|^#$2$|$2|" $f;;
     esac
   else
     i=x
   fi
-
-  [ $i = x ] || {
-    f="$(cat $2)" 2>/dev/null || :
-    rm $TMPDIR/.nowrite 2>/dev/null || :
-    [[ "$one" != */* ]] || one="$(cat $one)"
-    ! [[ -n "$f" && "$f" != "$one" ]] || {
-      touch $TMPDIR/.nowrite
-      i=x
-    }
-    if [ -n "${exitCode_-}" ]; then
-      [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
-    fi
-  }
-
+  f="$(cat $2)" 2>/dev/null || :
+  rm $TMPDIR/.nowrite 2>/dev/null || :
+  if [ -n "$f" ]; then
+    [ "$f" != "$oppositeValue" ] || { touch $TMPDIR/.nowrite; i=x; }
+  fi
+  if [ -n "${exitCode_-}" ]; then
+    [ -n "${swValue-}" ] && swValue="$swValue, $f" || swValue="$f"
+  fi
   [ $i = x ] && return ${3-1} || {
-    for i in $(seq $seq); do
-      if eval "echo $1 > $2"; then
-        [ $i -eq $seq ] || usleep $((1000000 / $seq))
-      else
-        return 1
-      fi
+    for i in 1 2 3; do
+      usleep 330000
+      eval "echo $1 > $2" || :
     done
   }
 }
@@ -446,32 +429,37 @@ domain=vr25
 loopDelay=(3 9)
 execDir=/data/adb/$domain/acc
 export TMPDIR=/dev/.vr25/acc
-dataDir=/data/adb/$domain/${id}-data
-: ${config:=$dataDir/config.txt}
+: ${config:=/data/adb/$domain/${id}-data/config.txt}
 config_=$config
+dataDir=/data/adb/$domain/${id}-data
 
 [ -f $TMPDIR/.ghost-charging ] \
   && ghostCharging=true \
   || ghostCharging=false
 
 trap exxit EXIT
+
 . $execDir/setup-busybox.sh
 . $execDir/set-ch-curr.sh
 . $execDir/set-ch-volt.sh
 
-# wait for accd initialization
-if ! ${isAccd:-false} && [ ! -f $TMPDIR/.batt-interface.sh ]; then
-  printf "⏳ accd --init\n\n"
-  for i in $(seq 35); do
-    [ -f $TMPDIR/.batt-interface.sh ] && break || sleep 2
-  done
-  unset i
-fi
-
 device=$(getprop ro.product.device | grep .. || getprop ro.build.product)
+
 cd /sys/class/power_supply/
 . $execDir/batt-interface.sh
-. $execDir/android.sh
+
+# cmd battery and dumpsys wrappers
+if is_android; then
+  cmd_batt() { /system/bin/cmd battery "$@" < /dev/null > /dev/null 2>&1 || :; }
+  dumpsys() { /system/bin/dumpsys "$@" || :; }
+else
+  cmd_batt() { :; }
+  dumpsys() { :; }
+  ! ${isAccd:-false} || {
+    chgStatusCode=0
+    dischgStatusCode=0
+  }
+fi
 
 # load plugins
 mkdir -p ${execDir}-data/plugins $TMPDIR/plugins

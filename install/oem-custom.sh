@@ -1,18 +1,19 @@
 _grep() { grep -Eq "$1" ${2:-$config}; }
 _set_prop() { sed -i "\|^${1}=|s|=.*|=$2|" ${3:-$config}; }
 _get_prop() { sed -n "\|^$1=|s|.*=||p" ${2:-$config} 2>/dev/null || :; }
-_is_board() { getprop ro.product.board | grep -Eiq "$1"; }
 
 # patch/reset [broken/obsolete] config
-if (set +x; . $config) >/dev/null 2>&1; then
+if (set +x; . $config) > /dev/null 2>&1; then
   configVer=0$(_get_prop configVerCode)
   defaultConfVer=0$(cat $TMPDIR/.config-ver)
   [ $configVer -eq $defaultConfVer ] || {
-    # if [ $configVer -lt 202404070 ]; then
-    #   $TMPDIR/acca $config --set thermal_suspend=
-    # else
-      $TMPDIR/acca $config --set dummy=
-    # fi
+    if [ $configVer -lt 202308121 ]; then
+      $TMPDIR/acca --set temp_level=0 force_off= capacity_sync=
+    elif [ $configVer -lt 202310160 ]; then
+      $TMPDIR/acca --set force_off= capacity_sync=
+    else
+      $TMPDIR/acca --set dummy=
+    fi
   }
 else
   cat $execDir/default-config.txt > $config
@@ -26,34 +27,33 @@ fi
 ! _grep '^chargingSwitch=./sys/module/lge_battery/parameters/charge_stop_level' \
   || loopCmd='[ $(cat battery/input_suspend) != 1 ] || echo 0 > battery/input_suspend'
 
+# battery idle mode for certain mtk devices
+# ! _grep '^chargingSwitch=.battery/input_suspend 0 1 /proc/mtk_battery_cmd/en_power_path 1 1' \
+#   || loopCmd='
+#     if [ $(cat /proc/mtk_battery_cmd/en_power_path) -eq 0 ] && [ $(cat battery/status) = Discharging ]; then
+#       echo 0 > battery/input_suspend
+#     fi
+#   '
+
 # idle mode - sony xperia
 echo 1 > battery_ext/smart_charging_activation 2>/dev/null || :
 
+# block "ghost charging on steroids" (Xiaomi Redmi 3 - ido)
+[ ! -f $TMPDIR/accd-ido.log ] || touch $TMPDIR/.ghost-charging
+
 # mt6795, exclude ChargerEnable switches (troublesome)
-! getprop | grep '\[mt6795\]' > /dev/null || {
+! getprop | grep -E mt6795 > /dev/null || {
   ! _grep ChargerEnable $execDir/ctrl-files.sh || {
     sed -i /ChargerEnable/d $TMPDIR/ch-switches
     sed -i /ChargerEnable/d $execDir/ctrl-files.sh
   }
 }
 
-# prevent "ghost charging" (MSM8916)
-! _is_board '^MSM8916$' || touch $TMPDIR/.ghost-charging
+# set batt_slate_mode as default charging control file for Exynos/Samsung devices
+# this prevents the "battery level stuck at 70%" issue
+! _grep '^battery/batt_slate_mode 0 1' $TMPDIR/ch-switches \
+  || [ -n "$(_get_prop chargingSwitch)" ] \
+  || _set_prop chargingSwitch "(battery/batt_slate_mode 0 1)"
 
-# devices that report wrong current; disable current-based status detection
-! _is_board '^(msm8937|CRO-L03)$' || {
-  [ .$(_get_prop battStatusWorkaround) = .false ] \
-    || $TMPDIR/acca $config --set batt_status_workaround=false
-}
-
-# avoid unexpected reboots
-! _is_board '^CRO-L03$' || sed -i /current_cmd/d $TMPDIR/ch-switches
-
-# msm8953 (e.g., Moto Z Play)
-! _is_board msm8953 || {
-  _get_prop chargingSwitch | grep 'battery/charging_enabled 1 0 \-\-' >/dev/null \
-    || $TMPDIR/acca $config --set charging_switch="battery/charging_enabled 1 0 --"
-}
-
-unset -f _grep _get_prop _is_board _set_prop
+unset -f _grep _get_prop _set_prop
 unset configVer defaultConfVer

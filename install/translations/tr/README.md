@@ -68,7 +68,7 @@ Sistem Magisk kullanılarak veya başka bir şekilde rootlanmış fark etmez, ku
 ---
 ## Lisans
 
-Copyright 2017-2024, VR25
+Copyright 2017-2023, VR25
 
 Bu ücretsiz bir yazılımdır: dilerseniz Free Software Foundation tarafından yayımlanan
 GNU General Public License altında değiştirebilir veya yeniden dağıtabilirsiniz.
@@ -936,7 +936,7 @@ The format is as follows:
 
 ### ACC Kaldırma
 
-`/data/adb/vr25/acc/uninstall.sh` dosyasını çalıştırın (yeniden başlatmaya gerek yok; **şarj kablosu takılı olmalı**) veya Magisk üzerinden kaldırıp cihazı yeniden başlatın.
+`/dev/.vr25/acc/uninstall` dosyasını çalıştırın (yeniden başlatmaya gerek yok; **şarj kablosu takılı olmalı**) veya Magisk üzerinden kaldırıp cihazı yeniden başlatın.
 
 
 ### ACC Başlatma

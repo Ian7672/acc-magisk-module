@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Installation Archives Builder
-# Copyright 2018-2024, VR25
+# Copyright 2018-2022, VR25
 # License: GPLv3+
 #
 # usage: $0 [any_random_arg]
@@ -12,6 +12,7 @@
 (cd ${0%/*} 2>/dev/null
 
 . ./check-syntax.sh || exit $?
+
 
 set_prop() {
   sed -i -e "s/^($1=.*/($1=$2/" -e "s/^$1=.*/$1=$2/" \
@@ -78,7 +79,7 @@ if [ README.md -ot install/default-config.txt ] \
 then
 # default config
   set -e
-  { sed -n '1,/#DC#/p' README.md; echo; cat install/default-config.txt; \
+  { sed -n '1,/#DC#/p' README.md; echo; sed 's/^# /\/\/ /' install/default-config.txt; \
     echo; sed -n '/^#\/DC#/,$p' README.md; } > README.md.tmp
 # terminal commands
   { sed -n '1,/#TC#/p' README.md.tmp; \
@@ -86,7 +87,7 @@ then
     echo; sed -n '/^#\/TC#/,$p' README.md.tmp; } > README.md
     rm README.md.tmp
   set +e
-  markdown README.md > README.html 2>/dev/null || :
+  markdown README.md > README.html
 fi
 
 
@@ -113,7 +114,7 @@ if [ bin/${id}_flashable_uninstaller.zip -ot install/uninstall.sh ] || [ ! -f bi
   echo "=> bin/${id}_flashable_uninstaller.zip"
   rm -rf bin/${id}_flashable_uninstaller.zip $tmpDir 2>/dev/null
   mkdir -p bin $tmpDir
-  sed 's|#!/system/bin/sh|#!/sbin/sh|' install/uninstall.sh > $tmpDir/update-binary
+  cp install/uninstall.sh $tmpDir/update-binary
   echo "#MAGISK" > $tmpDir/updater-script
   (cd .tmp
   zip -r9 ../bin/${id}_flashable_uninstaller.zip * \
@@ -133,7 +134,7 @@ fi
 
   # generate $id flashable zip
   case $version in
-    *-*) basename_=${basename}_$(date +%H%M);;
+    *-dev) basename_=${basename}_$(date +%H%M);;
     *) basename_=$basename;;
   esac
   echo "=> _builds/${basename}/${basename_}.zip"

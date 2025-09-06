@@ -12,15 +12,13 @@ print_ss_() {
 set_prop() {
 
   local restartDaemon=false
-  local line=
-  local two=
 
   case ${1-} in
 
     # set multiple properties
     *=*)
       . $defaultConfig
-      . $config
+      src_cfg
 
       export "$@"
 
@@ -31,7 +29,6 @@ set_prop() {
         || set_ch_volt "${mcv:-${max_charging_voltage:--}}" || :
 
       [ -z "${tl-}${temp_level-}" ] || set_temp_level ${tl:-$temp_level}
-      echo "✅"
     ;;
 
     # reset config
@@ -47,15 +44,13 @@ set_prop() {
     # print default config
     d|--print-default)
       . $defaultConfig
-      two="${2//,/|}"
-      . $execDir/print-config.sh ns | { grep -E "${two:-.}" | more; } || :
+      . $execDir/print-config.sh ns | { grep -E "${2-.}" | more; } || :
       return 0
     ;;
 
     # print current config
     p|--print)
-      two="${2//,/|}"
-      . $execDir/print-config.sh | { grep -E "${two:-.}" | more; } || :
+      . $execDir/print-config.sh | { grep -E "${2-.}" | more; } || :
       return 0
     ;;
 
@@ -65,7 +60,7 @@ set_prop() {
       PS3="$(print_choice_prompt)"
       print_ss_
       . $execDir/select.sh
-      select_ charging_switch $(print_auto; sort -u $TMPDIR/ch-switches; print_exit)
+      select_ charging_switch $(print_auto; cat $TMPDIR/ch-switches; print_exit)
       [ ${charging_switch:-x} != $(print_exit) ] || exit 0
       [ ${charging_switch:-x} != $(print_auto) ] || charging_switch=
       case "${charging_switch:-x}" in
@@ -82,12 +77,8 @@ set_prop() {
 
     # print switches
     s:|--charging*witch:)
-      sort -u $TMPDIR/ch-switches
+      cat $TMPDIR/ch-switches
       return 0
-    ;;
-
-    -ss::|--charging*witch::)
-      sort $dataDir/logs/working-switches.log | nl -s ") " -w 2 -v 1
     ;;
 
     # set charging current
@@ -117,23 +108,10 @@ set_prop() {
       unset IFS
     ;;
 
+    # print current config (full)
     *)
-      if [ -f "${1:-//}" ]; then
-        # import config
-        cat $config > $TMPDIR/.tmp
-        dos2unix < "$1" | grep -Ev '^:|=""$' >> $TMPDIR/.tmp
-        dos2unix < "$1" | grep '^:' | while IFS= read -r line; do
-          $TMPDIR/acca $TMPDIR/.tmp --config a "$line"
-        done
-        $TMPDIR/acca $TMPDIR/.tmp --set dummy=
-        cat $TMPDIR/.tmp > $config
-        echo "✅"
-        return 0
-      else
-        # print current config (full)
-        . $execDir/print-config.sh | more
-        return 0
-      fi
+      . $execDir/print-config.sh | more
+      return 0
     ;;
 
   esac

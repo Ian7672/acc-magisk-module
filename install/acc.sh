@@ -1,7 +1,45 @@
 #!/system/bin/sh
 # Advanced Charging Controller
-# Copyright 2017-2024, VR25
+# Copyright 2017-2023, VR25
 # License: GPLv3+
+
+
+_batt_info() {
+  set +e
+  dsys="$(dumpsys battery)"
+
+  {
+    {
+
+      if tt "${dsys:-x}" "*reset*"; then
+
+        status=$(echo "$dsys" | sed -n 's/^  status: //p')
+        level=$(echo "$dsys" | sed -n 's/^  level: //p')
+        powered=$(echo "$dsys" | grep ' powered: true' > /dev/null && echo true || echo false)
+
+        cmd_batt reset
+        dumpsys battery
+        cmd_batt set status $status
+        cmd_batt set level $level
+
+        if $powered; then
+          cmd_batt set ac 1
+        else
+          cmd_batt unplug
+        fi
+
+      else
+        echo "$dsys"
+      fi
+
+    } | grep -Ei "${1-.*}" | sed -e '1s/.*/Battery Service\n/' && echo
+
+    . $execDir/batt-info.sh
+    printf "Uevent\n\n"
+    batt_info "${1-}" | sed 's/^/  /'
+
+  } | more
+}
 
 
 daemon_ctrl() {
@@ -61,17 +99,8 @@ edit() {
   local file="$1"
   shift
   case "${1-}" in
-    a) echo >> $file
-       shift
-       two=($*)
-       if grep -iv "^: ${two[1]%?};" $file > $TMPDIR/.tmp; then
-         cat $TMPDIR/.tmp > $file
-         rm $TMPDIR/.tmp
-       fi
-       unset two
-       echo "$@" | sed 's/,/;/' >> $file;;
-
-    d) shift; sed -Ei "\#$*#d" $file;;
+    a) echo >> $file; shift; echo "$@" >> $file;;
+    d) sed -Ei "\#$2#d" $file;;
 
     g) [ "$file" = "$config" ] || {
          install -m 666 $file /data/local/tmp/
@@ -79,13 +108,6 @@ edit() {
        }
        shift
        ext_app $file "$@";;
-
-    h) [ -n "${2-}" ] || exit 0
-       if grep -q "# $2 (.*) #" $file; then
-         sed -n "/# $2 (.*) #/,/^$/p" $file | filter
-       elif grep -q "# .* ($2) #" $file; then
-         sed -n "/# .* ($2) #/,/^$/p" $file | filter
-       fi;;
 
     "") case $file in
           *.log|*.md|*.help) less $file;;
@@ -104,11 +126,6 @@ ext_app() {
 }
 
 
-filter() {
-  sed '/^$/d; s/ # /, /; s/ #//; s/^# //; s/#//'
-}
-
-
 get_prop() { sed -n "s|^$1=||p" ${2:-$config}; }
 
 
@@ -124,7 +141,7 @@ switch_fails() {
 }
 
 
-test_charging_switch_() {
+test_charging_switch() {
 
   local idleMode=false
   local failed=false
@@ -139,8 +156,7 @@ test_charging_switch_() {
 
   echo "chargingSwitch=($*)" > $TMPDIR/.sw
   flip_sw off
-
-  [ $? -eq 2 ] && {
+  ! [ $? -eq 2 ] || {
     flip_sw on
     switch_fails
     return 10
@@ -159,7 +175,7 @@ test_charging_switch_() {
 
   if ! $failed && ! not_charging; then
     print_switch_works
-    echo "  battIdleMode=$idleMode"
+    echo "- battIdleMode=$idleMode"
     $idleMode && return 15 || return 0
   else
     switch_fails
@@ -167,22 +183,12 @@ test_charging_switch_() {
 }
 
 
-test_charging_switch() {
-  local ret=
-  lastNode=
-  grep -Eq "^(#$1|$1)$" $writeLog 2>/dev/null || { echo "#$1" >> $writeLog; lastNode=$1; }
-  test_charging_switch_ "$@"; ret=$?
-  [ -n "${lastNode-}" ] && { sed -i "\|^#${lastNode}$|s|^#||" $writeLog; lastNode=; }
-  return $ret
-}
-
-
 exxit() {
   local exitCode=$?
   set +eux
   ! ${noEcho:-false} && ${verbose:-true} && echo
-  [[ "$exitCode" = [05689] ]] || {
-    eq "$exitCode" "[127]|10" && logf --export
+  tt "$exitCode" "[05689]" || {
+    tt "$exitCode" "[127]|10" && logf --export
     echo
   }
   cd /
@@ -230,8 +236,7 @@ parse_switches() {
     # exclude all known switches
     ! grep -q "$i " $1 || continue
 
-    # blacklist
-    i="$(echo "$i $n" | grep -Eiv 'authentic|brightness|calibrat|capacitance|count|curr|cycle|daemon|demo|design|detect|disk|empty|factory|fast|fcc|flash|full|info|init|learn|mask|moist|nvram|online|otg|parallel|present|priority|protect|reboot|refcnt|report|resistance|reset|reverse|scale|time|rx_|ship|shutdown|state|status|step|sync|temp|timer|tx_|type|update|user|vbus|verif|volt|wait|wake')" || :
+    i="$(echo "$i $n" | grep -Eiv 'brightness|curr|online|present|runtime|status|temp|volt|wakeup|[^pP]reset|daemon|calibrat|init|resistance|capacitance|shutdown|parallel|cycle|shutdown|reboot|nvram|count|disk|mem_state|user|factory|timer|flash|otg|authentic|update|demo|report|info|mask')" || :
 
     [ -z "$i" ] || echo "$i"
 
@@ -242,24 +247,10 @@ parse_switches() {
 
 
 rollback() {
-  if [[ ".${*-}" != *v* ]]; then
-    print_wait
-    for i in $execDir/*; do
-      [[ $i = */system ]] || rm -rf $i
-    done
-    rm -rf $dataDir/backup/system
-    cp -a $dataDir/backup/* $execDir/
-    if [[ ".${*-}" = *n* ]]; then
-      rm $execDir/config.txt
-    else
-      mv -f $execDir/config.txt $config
-    fi
-    $execDir/service.sh --init
-    printf "✅ "
-  fi
-  i=$dataDir/backup/module.prop
-  [ -f $i ] || i=$execDir/module.prop
-  sed -n 's/^versionCode=//p' $i
+  rm -rf $execDir/*
+  cp -a $dataDir/backup/* $execDir/
+  mv -f $execDir/config.txt $config
+  $TMPDIR/accd --init
 }
 
 
@@ -277,7 +268,7 @@ defaultConfig=$execDir/default-config.txt
 . $execDir/logf.sh
 . $execDir/misc-functions.sh
 
-if eq "${1-}" "--test*|-t*|-x"; then
+if [ "${1:-y}" = -x ] || tt "${2-}" "p|parse"; then
   log=/sdcard/Download/acc-${device}.log
   [ $1 != -x ] || shift
 else
@@ -285,7 +276,7 @@ else
 fi
 
 # verbose
-if ${verbose:-true} && !  eq "${1-}" "-l*|--log*|-w*|--watch*"; then
+if ${verbose:-true} && ! tt "${1-}" "-l*|--log*|-w*|--watch*"; then
   [ -z "${LINENO-}" ] || export PS4='$LINENO: '
   touch $log
   [ $(du -k $log | cut -f 1) -ge 256 ] && : > $log
@@ -300,8 +291,14 @@ accVerCode=$(get_prop versionCode $execDir/module.prop)
 
 unset -f get_prop
 
+
 misc_stuff "${1-}"
-[[ "${1-}" != */* ]] || shift
+! tt "${1-}" "*/*" || shift
+
+
+# reset broken/obsolete config
+(set +x; . $config) > /dev/null 2>&1 \
+  || cat $execDir/default-config.txt > $config
 
 . $config
 
@@ -323,7 +320,7 @@ grep -q .. $execDir/translations/$language/README.html 2>/dev/null \
 # aliases/shortcuts
 # daemon_ctrl status (acc -D|--daemon): "accd,"
 # daemon_ctrl stop (acc -D|--daemon stop): "accd."
-[[ "$0" != *accd* ]] || {
+! tt "$0" "*accd*" || {
   case $0 in
     *accd.) daemon_ctrl stop;;
     *) daemon_ctrl;;
@@ -343,11 +340,10 @@ case "${1-}" in
     pause_capacity=$1
     resume_capacity=${2:-5000}
     . $execDir/write-config.sh
-    echo "✅"
   ;;
 
-  -b*|--rollback*)
-    rollback "${*-}"
+  -b|--rollback)
+    rollback
   ;;
 
   -c|--config)
@@ -377,46 +373,40 @@ case "${1-}" in
 
   -f|--force|--full)
 
-    auto=false
-    cap=100
-    shift
+    tt ".${2-}" ".-*" && _two= || _two="${2-}"
 
-    for i in ${1-} ${2-}; do
-      [[ $i != [0-9]* ]] || { cap=$i; shift; }
-      [ $i != -a ] || { auto=true; shift; }
-    done
-
-    cp -f $config $TMPDIR/.acc-f-config
-    config=$TMPDIR/.acc-f-config
-    sed -i '/^:/d' $config
-
-    (allow_idle_above_pcap=
-    cooldown_capacity=
+    apply_on_boot=
+    apply_on_plug=
     cooldown_charge=
     cooldown_current=
+    cooldown_custom=
     cooldown_pause=
-    cooldown_temp=
-    idle_apps=
     max_charging_current=
     max_charging_voltage=
     max_temp=
     off_mid=false
-    pause_capacity=$cap
-    resume_capacity=$((cap - 2))
     resume_temp=
-    temp_level=
-    . $execDir/write-config.sh)
+    temp_level=0
+    pause_capacity=${_two:-100}
+    resume_capacity=$((pause_capacity - 2))
 
-    ! $auto || print '\n:; online || exec $TMPDIR/accd' >> $config
-    [ -z "${1-}" ] || eval $TMPDIR/acca $config "$@"
+    cp -f $defaultConfig $TMPDIR/.acc-f-config
+    config=$TMPDIR/.acc-f-config
+    . $execDir/write-config.sh
+    print_charging_enabled_until ${_two:-100}%
+    echo
+    echo ':; ! online && [ $(cat $battCapacity) -ge ${capacity[2]} ] && exec $TMPDIR/accd || :' >> $config
 
-    print_charging_enabled_until ${cap}%
-    $auto || print_restart_accd
-    ! ${verbose:-true} || {
-      notif "$(print_charging_enabled_until ${cap}%; $auto || print_restart_accd)"
-      echo
-    }
-    unset auto cap i
+     # additional options
+    case "${2-}" in
+      [0-9]*)
+        shift 2
+        ! tt "${1-}" "-*" || $TMPDIR/acca $config "$@" || :;;
+      -*)
+        shift
+        $TMPDIR/acca $config "$@" || :;;
+    esac
+
     exec $TMPDIR/accd $config
   ;;
 
@@ -433,7 +423,7 @@ case "${1-}" in
 
     counter=$(set +e; grep -E '[1-9]+' */charge_counter 2>/dev/null | head -n 1 | sed 's/.*://' || :)
     health=
-    level=$(batt_cap)
+    level=$(cat $batt/capacity)
     mAh=${2-}
 
     [ -n "$mAh" ] || { echo "${0##*/} $1 <mAh>"; exit; }
@@ -445,8 +435,7 @@ case "${1-}" in
   ;;
 
   -i|--info)
-    . $execDir/batt-info.sh
-    batt_info "${2-}" | more
+    _batt_info "${2-.*}"
   ;;
 
   -la)
@@ -482,8 +471,8 @@ case "${1-}" in
   ;;
 
   -R|--resetbs)
-    resetbs
-    echo "✅"
+    dumpsys batterystats --reset
+    rm -rf /data/system/battery*stats* 2>/dev/null || :
   ;;
 
   -sc)
@@ -515,10 +504,6 @@ case "${1-}" in
     set_prop_ --charging_switch:
   ;;
 
-  -ss::)
-    set_prop_ $1
-  ;;
-
   -sv)
     shift
     set_prop_ --voltage "$@"
@@ -530,21 +515,12 @@ case "${1-}" in
   ;;
 
 
-  -t*|--test*)
+  -t|--test)
 
+    shift
     parsed=
     exitCode_=10
     exitCode=$exitCode_
-    writeLog=$dataDir/logs/write.log
-    logF_=$dataDir/logs/acc-t_output-${device}.log
-    : ${logF:=/sdcard/Download/acc-t_output-${device}_$(date +%Y-%m-%d_%H-%M-%S).log}
-
-    __STI=${1#-t}
-    __STI=${__STI#--test}
-    [ -z "$__STI" ] || _STI=$__STI
-
-    shift
-    [ "${1:-x}" != q ] || shift
     print_wait
     print_unplugged
 
@@ -562,45 +538,39 @@ case "${1-}" in
     config=$TMPDIR/.config
 
     exxit() {
-      rm $TMPDIR/.testingsw 2>/dev/null || :
-      if [ -n "$parsed" ]; then
+      [ -z "$parsed" ] || {
         cat $TMPDIR/ch-switches $_parsed 2>/dev/null > $parsed \
           && sort -u $parsed | sed 's/ $//; /^$/d' > $TMPDIR/ch-switches
-      fi
-      cp -f $logF $logF_ 2>/dev/null
+      }
+      [ ! -f $TMPDIR/.sw ] || {
+        while IFS= read line; do
+          [ -n "$line" ] || continue
+          ! grep -q "$line " $TMPDIR/.sw || sed -i "\|$line|d" $dataDir/logs/write.log
+        done < $dataDir/logs/write.log
+      }
       ! $daemonWasUp || start-stop-daemon -bx $TMPDIR/.accdt -S --
-      [ -n "${lastNode-}" ] && sed -i "\|^#${lastNode}$|s|^#||" $writeLog
       exit $exitCode
     }
 
     set +e
-    touch $TMPDIR/.testingsw
     trap exxit EXIT
     not_charging && enable_charging > /dev/null
 
     not_charging && {
-      print_unplugged
+      (print_wait_plug
       while not_charging; do
         sleep 1
         set +x
-      done
-      log_on
+      done)
     }
 
+    [ "${1-}" != -- ] || shift #legacy, AccA
     . $execDir/read-ch-curr-ctrl-files-p2.sh
-    echo
-    echo _STI=$_STI
-    { echo versionCode=$(sed -n s/versionCode=//p $execDir/module.prop 2>/dev/null || :)
-    echo
-    grep . */online
-    echo
-    grep '^chargingSwitch=' $config; } | tee $logF
+    : > /sdcard/Download/acc-t_output-${device}.log
 
     if [ -z "${2-}" ]; then
-      !  eq "${1-}" "p|parse" || parsed=$TMPDIR/.parsed
-      if [ -z "$parsed" ]; then
-        rm $dataDir/logs/working-switches.log 2>/dev/null || :
-      else
+      ! tt "${1-}" "p|parse" || parsed=$TMPDIR/.parsed
+      [ -z "$parsed" ] || {
         _parsed=$dataDir/logs/parsed.log
         if parse_switches > $parsed; then
           set -- $parsed
@@ -617,15 +587,14 @@ case "${1-}" in
           echo
           exit
         fi
-      fi
+      }
       swCount=1
       swTotal=$(wc -l ${1-$TMPDIR/ch-switches} | cut -d ' ' -f 1)
-      sort -u $TMPDIR/ch-switches > $TMPDIR/ch-switches_
-      mv -f $TMPDIR/ch-switches_ $TMPDIR/ch-switches
       while read _chargingSwitch; do
         echo "x$_chargingSwitch" | grep -Eq '^x$|^x#' && continue
         [ -f "$(echo "$_chargingSwitch" | cut -d ' ' -f 1)" ] && {
-          { test_charging_switch $_chargingSwitch; echo $? > $TMPDIR/.exitCode; } | tee -a $logF
+          { test_charging_switch $_chargingSwitch; echo $? > $TMPDIR/.exitCode; } \
+            | tee -a /sdcard/Download/acc-t_output-${device}.log
           rm $TMPDIR/.sw 2>/dev/null || :
           swCount=$((swCount + 1))
           exitCode_=$(cat $TMPDIR/.exitCode)
@@ -642,7 +611,8 @@ case "${1-}" in
       done < ${1-$TMPDIR/ch-switches}
       echo
     else
-      { test_charging_switch "$@"; echo $? > $TMPDIR/.exitCode; } | tee -a $logF
+      { test_charging_switch "$@"; echo $? > $TMPDIR/.exitCode; } \
+        | tee -a /sdcard/Download/acc-t_output-${device}.log
       rm $TMPDIR/.sw 2>/dev/null || :
       exitCode=$(cat $TMPDIR/.exitCode)
       echo
@@ -654,15 +624,14 @@ case "${1-}" in
   ;;
 
 
-  -T|--logtail)
-    arg="${2-}"
-    arg="${arg//,/|}"
-    tail -F $TMPDIR/accd-*.log | grep -E "${arg:-.}"
+  -T|--logtail|-L) #legacy, AccA
+    tail -F $TMPDIR/accd-*.log
   ;;
 
   -u|--upgrade)
     shift
     local array[0]=
+    local insecure=
     local reference=
 
     for i; do
@@ -671,6 +640,9 @@ case "${1-}" in
         -c|--changelog)
         ;;
         -f|--force)
+        ;;
+        -k|--insecure)
+          insecure=--insecure
         ;;
         -n|--non-interactive)
         ;;
@@ -693,18 +665,12 @@ case "${1-}" in
         || chmod -R 0755 /data/adb/vr25/bin
     }
 
-    dl() {
-      if [ ".${1-}" != .wget ] && i=$(which curl) && [ ".$(head -n 1 ${i:-//} 2>/dev/null || :)" != ".#!/system/bin/sh" ]; then
-        curl --help | grep '\-\-dns\-servers' >/dev/null && dns="--dns-servers 9.9.9.9,1.1.1.1" || dns=
-        curl $dns --progress-bar --insecure -Lo \
-          $TMPDIR/install-online.sh https://raw.githubusercontent.com/VR-25/acc/dev/install-online.sh || dl wget
-      else
-        PATH=${PATH#*/busybox:} /dev/.vr25/busybox/wget -O $TMPDIR/install-online.sh --no-check-certificate \
-          https://raw.githubusercontent.com/VR-25/acc/dev/install-online.sh
-      fi
-    }
-
-    dl
+    if which curl >/dev/null; then
+      curl $insecure -Lo $TMPDIR/install-online.sh https://raw.githubusercontent.com/VR-25/acc/$reference/install-online.sh
+    else
+      PATH=${PATH#*/busybox:} /dev/.vr25/busybox/wget -O $TMPDIR/install-online.sh --no-check-certificate \
+        https://raw.githubusercontent.com/VR-25/acc/$reference/install-online.sh
+    fi
     trap - EXIT
     set +eu
     installDir=$(readlink -f $execDir)
@@ -714,14 +680,7 @@ case "${1-}" in
 
   -U|--uninstall)
     set +eu
-    ! ${verbose:-true} || {
-      print_uninstall
-      echo yes/no
-      read ans
-      [ .$ans = .yes ] || exit 0
-    }
     /system/bin/sh $execDir/uninstall.sh
-    echo "✅"
   ;;
 
   -v|--version)
@@ -729,18 +688,13 @@ case "${1-}" in
   ;;
 
   -w*|--watch*)
-    two="${2//,/|}"
     sleepSeconds=${1#*h}
     sleepSeconds=${sleepSeconds#*w}
     : ${sleepSeconds:=1}
     . $execDir/batt-info.sh
     while :; do
       clear
-      if ${verbose:-true}; then
-        batt_info "${two-}"
-      else
-        batt_info "${two-}" | grep -v '^$' 2>/dev/null || :
-      fi
+      batt_info "${2-}"
       sleep $sleepSeconds
       set +x
     done

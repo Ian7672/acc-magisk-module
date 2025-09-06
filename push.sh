@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Push and Install Zip
-# Copyright 2022-2024, VR25
+# Copyright 2022-2023, VR25
 # License: GPLv3+
 #
 # usage: $0 [k] [adb device]
@@ -19,24 +19,5 @@ dest=/sdcard/Download/acc.zip
   shift
 }
 
-one=${1-}
-
-_adb() {
-  if [ -n "${one-}" ]; then
-    adb -s $one "$@"
-  else
-    adb "$@"
-  fi
-}
-
-if _adb shell su -c "which apd >/dev/null"; then
-  install="apd module install $dest"
-elif _adb shell su -c "which ksud >/dev/null"; then
-  install="ksud module install $dest"
-elif _adb shell su -c "which magisk >/dev/null"; then
-  install="magisk --install-module $dest"
-else
-  install=
-fi
-
-[ -z "$install" ] || _adb push $zip $dest && _adb shell su -c "$install" || :
+adb $([ -z "${1-}" ] || echo "-s $1") push $zip $dest \
+  && adb $([ -z "${1-}" ] || echo "-s $1") shell su -c magisk --install-module $dest || :

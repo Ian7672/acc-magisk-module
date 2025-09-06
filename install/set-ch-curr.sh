@@ -1,45 +1,40 @@
 set_ch_curr() {
 
-  local f=$TMPDIR/.mcc-custom
-  local isAccd=${isAccd:-false}
+  local verbose=${verbose:-true}
 
-  [[ ! -f $f && .${1-} = .- ]] && return 0 || :
-
-  [[ .${1-} != .*% ]] || {
-    set_temp_level ${1%\%}
-    return
+  $verbose || {
+    exxit() { exit $?; }
+    . $execDir/misc-functions.sh
   }
+
+  ! ${isAccd:-false} || verbose=false
 
   # check support
-  [ -f $TMPDIR/.mcc-read ] || {
-    ! not_charging || {
-      $isAccd || {
+  if [ ! -f $TMPDIR/.ch-curr-read ] \
+    || ! grep -q / $TMPDIR/ch-curr-ctrl-files 2>/dev/null
+  then
+    if not_charging; then
+      ! $verbose || {
         print_read_curr
-        print_unplugged
+        print_wait_plug
+        echo
       }
-      (set +x; while not_charging; do sleep 1; done)
-    }
+      (while not_charging; do sleep 1; set +x; done)
+    fi
     . $execDir/read-ch-curr-ctrl-files-p2.sh
-  }
-  grep -q / $TMPDIR/ch-curr-ctrl-files 2>/dev/null || {
-    $isAccd || print_no_ctrl_file
-    return 0
-  }
+    grep -q / $TMPDIR/ch-curr-ctrl-files || {
+      ! $verbose || print_no_ctrl_file
+      return 1
+    }
+  fi
 
   if [ -n "${1-}" ]; then
 
-    apply_on_plug_() {
-      (applyOnPlug=()
-      maxChargingVoltage=()
-      apply_on_plug ${1-})
-    }
-
     # restore
     if [ $1 = - ]; then
-      apply_on_plug_ default
+      apply_on_plug default
       max_charging_current=
-      $isAccd || print_curr_restored
-      rm $f 2>/dev/null || :
+      ! $verbose || print_curr_restored
 
     else
 
@@ -52,9 +47,9 @@ set_ch_curr() {
           fi
         " \
           && unset max_charging_current mcc \
-          && apply_on_plug_ \
+          && apply_on_plug \
           && {
-            $isAccd || print_curr_set $1
+            ! $verbose || print_curr_set $1
           } || return 1
       }
 
@@ -62,15 +57,14 @@ set_ch_curr() {
       if [ $1 -ge 0 -a $1 -le 9999 ]; then
         apply_current $1 || return 1
       else
-        $isAccd || echo "[0-9999]$(print_mA; print_only)"
+        ! $verbose || echo "[0-9999]$(print_mA; print_only)"
         return 11
       fi
-      touch $f
     fi
 
   else
     # print current value
-    $isAccd && echo ${maxChargingCurrent[0]-} \
+    ! $verbose && echo ${maxChargingCurrent[0]-} \
       || echo "${maxChargingCurrent[0]:-$(print_default)}$(print_mA)"
     return 0
   fi

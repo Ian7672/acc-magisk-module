@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # $id Installer/Upgrader
-# Copyright 2019-2024, VR25
+# Copyright 2019-2023, VR25
 # License: GPLv3+
 #
 # devs: triple hashtags (###) mark non-generic code
@@ -8,7 +8,6 @@
 
 # override the official Magisk module installer
 SKIPUNZIP=1
-SKIPMOUNT=false
 
 
 echo
@@ -30,7 +29,7 @@ exxit() {
   rm -rf /dev/.$domain.${id}-install
   $KSU || {
     rm -rf /data/adb/modules_update/$id
-    (abort) > /dev/null
+   (abort) > /dev/null
   }
   echo
   exit $e
@@ -43,12 +42,15 @@ trap exxit EXIT
 #BB#
 bin_dir=/data/adb/vr25/bin
 busybox_dir=/dev/.vr25/busybox
-magisk_busybox="$(ls /data/adb/*/bin/busybox /data/adb/magisk/busybox 2>/dev/null || :)"
+magisk_busybox="/data/adb/ksu/bin/busybox /data/adb/magisk/busybox"
 [ -x $busybox_dir/ls ] || {
   mkdir -p $busybox_dir
   chmod 0755 $busybox_dir $bin_dir/busybox 2>/dev/null || :
   for f in $bin_dir/busybox $magisk_busybox /system/*bin/busybox*; do
-    [ -x $f ] && eval $f --install -s $busybox_dir/ && break || :
+    [ ! -f $f ] || {
+      $f --install -s $busybox_dir/
+      break
+    }
   done
   [ -x $busybox_dir/ls ] || {
     echo "Install busybox or simply place it in $bin_dir/"
@@ -150,7 +152,7 @@ fi
 
 ###
 echo "$name $version ($versionCode)
-Copyright 2017-2024, $author
+Copyright 2017-2023, $author
 GPLv3+
 
 Installing in $installDir/$id/..."
@@ -162,11 +164,10 @@ mkdir -p $data_dir/backup
 cp -aH /data/adb/$domain/$id/* $config $data_dir/backup/ 2>/dev/null || :
 
 
-export KSU=${KSU:-false}
-$KSU || { [ ! -f /data/adb/*/bin/busybox ] || KSU=true; }
 /system/bin/sh $srcDir/install/uninstall.sh install
-mkdir -p $installDir/$id
-cp -R $srcDir/install/* $installDir/$id/
+KSU=${KSU:-false}
+$KSU || { [ ! -f /data/adb/ksu/bin/busybox ] || KSU=true; }
+cp -R $srcDir/install/ $installDir/$id
 installDir=$(readlink -f $installDir/$id)
 cp $srcDir/module.prop $installDir/
 cp -f $srcDir/README.* $data_dir/
@@ -180,27 +181,15 @@ cp -f $srcDir/README.* $data_dir/
 }
 
 
-tmpd=/dev/.$domain/$id
-mkdir -p $tmpd
-
-
 ###
 ! $magisk || {
-
-  # create executable wrappers to avoid rebooting unnecessarily
+  # symlink executables
   mkdir -p $installDir/system/bin
-
-  for i in ${id}.sh:$id ${id}.sh:${id}d, ${id}.sh:${id}d. ${id}a.sh:${id}a service.sh:${id}d; do
-    j=$installDir/system/bin/${i#*:}
-    [ ! -h $j ] || rm $j
-    echo "#!/system/bin/sh
-#exec_wrapper
-if [ -f $tmpd/.updated ]; then
-  exec /dev/${i#*:} \"\$@\"
-else
-  exec . /data/adb/$domain/$id/${i%:*} \"\$@\"
-fi" > $j
-  done
+  ln -fs $installDir/${id}.sh $installDir/system/bin/$id
+  ln -fs $installDir/${id}.sh $installDir/system/bin/${id}d,
+  ln -fs $installDir/${id}.sh $installDir/system/bin/${id}d.
+  ln -fs $installDir/${id}a.sh $installDir/system/bin/${id}a
+  ln -fs $installDir/service.sh $installDir/system/bin/${id}d
 }
 
 
@@ -237,7 +226,7 @@ fi
 
 [ $installDir = /data/adb/$domain/$id ] || {
   mkdir -p /data/adb/$domain
-  ln -sf $installDir /data/adb/$domain/
+  ln -s $installDir /data/adb/$domain/
 }
 
 
@@ -273,7 +262,6 @@ case $installDir in
   ;;
   *)
     set_perms_recursive $installDir
-    chmod 0755 $installDir/system/bin/* 2>/dev/null || :
   ;;
 esac
 
@@ -281,13 +269,13 @@ esac
 ! $KSU || {
   upModDir=${magiskModDir}_update
   rm -rf $upModDir/$id 2>/dev/null || :
-  cp -a $installDir $upModDir/
+  cp -a $installDir $upModDir
   touch $installDir/update
 }
 
 
 set +eu
-printf "Done\n\n\n"
+printf "- Done\n\n\n"
 
 
 # print links and changelog
@@ -298,18 +286,10 @@ printf "\n\nCHANGELOG\n\n"
 cat $srcDir/changelog.md
 
 
-_echo() {
-  echo "$@" | tee -a $tmpd/.install-notes
-}
-
-
 printf "\n\n"
-printf "$version ($versionCode) installed and running!\n\nRollback with acc -b if not satisfied.\n\n" | tee $tmpd/.install-notes
-if [ -x /sbin/${id}d ] || grep -q '#exec_wrapper' /system/bin/${id}d 2>/dev/null; then
-  _echo "Rebooting is unnecessary."
-else
-  _echo "Note: If you're not rebooting now, prefix all acc executables with /dev/ (as in /dev/acc -i, /dev/accd). Reasoning: Magisk, KernelSU and similar, don't [re]mount/update modules without a reboot."
-fi
+which accd. >/dev/null && echo "Rebooting is unnecessary." \
+  || echo "- $id commands require the "/dev/" prefix (e.g., /dev/$id -v) until system is rebooted."
+echo "- Daemon started."
 
 
 case $installDir in
@@ -318,24 +298,11 @@ case $installDir in
 Non-Magisk users can enable $id auto-start by running /data/adb/$domain/$id/service.sh, a copy of, or a link to it - with init.d or an app that emulates it.";;
 esac
 
+#legacy
+f=$data_dir/logs/ps-blacklist.log
+[ -f $f ] || mv $data_dir/logs/psl-blacklist.txt $f 2>/dev/null
+rm $data_dir/${id}-uninstaller.zip $data_dir/logs/*.tar.gz $data_dir/curr 2>/dev/null
 
 # initialize $id
-rm $data_dir/disable 2>/dev/null
 /data/adb/$domain/$id/service.sh --init
-
-
-# magic_overlayfs support
-
-OVERLAY_IMAGE_EXTRA=0     # number of kb need to be added to overlay.img
-OVERLAY_IMAGE_SHRINK=true # shrink overlay.img or not?
-
-# only use OverlayFS if Magisk_OverlayFS is installed
-if [ -f "/data/adb/modules/magisk_overlayfs/util_functions.sh" ] && \
-    /data/adb/modules/magisk_overlayfs/overlayfs_system --test; then
-  ui_print ""
-  ui_print "- Add support for overlayfs"
-  . /data/adb/modules/magisk_overlayfs/util_functions.sh
-  support_overlayfs && rm -rf "$MODPATH"/system
-fi
-
 exit 0

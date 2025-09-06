@@ -1,11 +1,11 @@
 set +u
 
-echo "acc_version=$(sed -n s/versionCode=//p $execDir/module.prop)
-
-allow_idle_above_pcap=$allowIdleAbovePcap
+echo "allow_idle_above_pcap=$allowIdleAbovePcap
 amp_factor=$ampFactor
 batt_status_workaround=$battStatusWorkaround
-capacity_mask=${capacity[4]}
+
+capacity_mask=${capacity[5]}
+capacity_sync=${capacity[4]}
 
 cooldown_capacity=${capacity[1]}
 cooldown_charge=${cooldownRatio[0]}
@@ -14,14 +14,14 @@ cooldown_pause=${cooldownRatio[1]}
 cooldown_temp=${temperature[0]}
 
 current_workaround=$currentWorkaround
+discharge_polarity=$dischargePolarity
 force_off=$forceOff
+idle_threshold=$idleThreshold
 lang=$language
-
-max_charging_current=${maxChargingCurrent[0]}
-max_charging_voltage=${maxChargingVoltage[0]}
 
 max_temp=${temperature[1]}
 resume_temp=${temperature[2]}
+max_temp_pause=${temperature[2]%r}
 
 off_mid=$offMid
 pause_capacity=${capacity[3]}
@@ -38,16 +38,22 @@ shutdown_temp=${temperature[3]}
 temp_level=$tempLevel
 volt_factor=$voltFactor
 
-apply_on_boot=\"${applyOnBoot[@]}\"
+apply_on_boot=${applyOnBoot[@]}
 
-apply_on_plug=\"${applyOnPlug[@]}\"
+apply_on_plug=${applyOnPlug[@]}
 
-batt_status_override=\"$battStatusOverride\"
+batt_status_override=$battStatusOverride
 
-charging_switch=\"${chargingSwitch[@]}\"
+charging_switch=${chargingSwitch[@]}
 
-idle_apps=\"${idleApps[@]}\"
+cooldown_custom=${cooldownCustom[@]}
 
-run_cmd_on_pause=\"$runCmdOnPause\""
+max_charging_current=${maxChargingCurrent[0]}
+
+max_charging_voltage=${maxChargingVoltage[0]}
+
+run_cmd_on_pause=$runCmdOnPause
+
+loop_cmd=" #legacy, AccSettings
 
 [ "${1-.}" = ns ] || sed -n 's/^:/\n:/p' $config

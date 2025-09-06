@@ -1,84 +1,75 @@
 #!/system/bin/sh
 # Advanced Charging Controller Daemon (accd)
-# Copyright 2017-2024, VR25
+# Copyright 2017-2023, VR25
 # License: GPLv3+
 
 
 . $execDir/acquire-lock.sh
 
 
-_INIT=false
+init=false
 
 case "$*" in
-  *-i*) _INIT=true;;
-  *) [ -f $TMPDIR/.batt-interface.sh ] || _INIT=true;;
+  *-i*) init=true;;
+  *) [ -f $TMPDIR/.config-ver ] || init=true;;
 esac
 
 
-if ! $_INIT; then
+if ! $init; then
 
 
   _ge_cooldown_cap() {
-    if [ ${capacity[1]} -gt 3000 ]; then
-      [ $(volt_now) -ge ${capacity[1]} ]
+    if t ${capacity[1]} -gt 3000; then
+      t $(volt_now) -ge ${capacity[1]}
     else
-      [ $(batt_cap) -ge ${capacity[1]} ]
+      t $(cat $battCapacity) -ge ${capacity[1]}
     fi
   }
 
 
   _ge_pause_cap() {
-    if [ ${capacity[3]} -gt 3000 ]; then
-      [ $(volt_now) -ge ${capacity[3]} ]
+    if t ${capacity[3]} -gt 3000; then
+      t $(volt_now) -ge ${capacity[3]}
     else
-      [ $(batt_cap) -ge ${capacity[3]} ]
-    fi
-  }
-
-
-  _le_pause_cap() {
-    if [ ${capacity[3]} -gt 3000 ]; then
-      [ $(volt_now) -le ${capacity[3]} ]
-    else
-      [ $(batt_cap) -le ${capacity[3]} ]
+      t $(cat $battCapacity) -ge ${capacity[3]}
     fi
   }
 
 
   _lt_pause_cap() {
-    if [ ${capacity[3]} -gt 3000 ]; then
-      [ $(volt_now) -lt ${capacity[3]} ]
+    if t ${capacity[3]} -gt 3000; then
+      t $(volt_now) -lt ${capacity[3]}
     else
-      [ $(batt_cap) -lt ${capacity[3]} ]
+      t $(cat $battCapacity) -lt ${capacity[3]}
     fi
   }
 
 
   _gt_resume_cap() {
-    if [ ${capacity[2]} -gt 3000 ]; then
-      [ $(volt_now) -gt ${capacity[2]} ]
+    if t ${capacity[2]} -gt 3000; then
+      t $(volt_now) -gt ${capacity[2]}
     else
-      [ $(batt_cap) -gt ${capacity[2]} ]
+      t $(cat $battCapacity) -gt ${capacity[2]}
     fi
   }
 
 
   _le_resume_cap() {
-    if $mtReached && _lt_pause_cap; then
+    if tt ${temperature[2]} "*r" && _lt_pause_cap; then
       return 0
-    elif [ ${capacity[2]} -gt 3000 ]; then
-      [ $(volt_now) -le ${capacity[2]} ]
+    elif t ${capacity[2]} -gt 3000; then
+      t $(volt_now) -le ${capacity[2]}
     else
-      [ $(batt_cap) -le ${capacity[2]} ]
+      t $(cat $battCapacity) -le ${capacity[2]}
     fi
   }
 
 
   _le_shutdown_cap() {
-    if [ ${capacity[0]} -gt 3000 ]; then
-      [ $(volt_now) -le ${capacity[0]} ]
+    if t ${capacity[0]} -gt 3000; then
+      t $(volt_now) -le ${capacity[0]}
     else
-      [ $(batt_cap) -le ${capacity[0]} ]
+      t $(cat $battCapacity) -le ${capacity[0]}
     fi
   }
 
@@ -88,12 +79,8 @@ if ! $_INIT; then
   }
 
 
-  cap_idle_threshold() {
-    if [ ${capacity[3]} -gt 3000 ]; then
-      [ ${capacity[3]} -gt 3900 ] && [ $(volt_now) -gt $(( ${capacity[3]} + 50 )) ]
-    else
-      [ ${capacity[3]} -gt 60 ] && [ $(batt_cap) -gt $(( ${capacity[3]} + 1 )) ]
-    fi
+  below_abs_lims() {
+    _lt_pause_cap && [ $(cat $temp) -lt $(( ${temperature[1]} * 10 )) ] && is_charging
   }
 
 
@@ -105,17 +92,16 @@ if ! $_INIT; then
     [ -n "$1" ] && exitCode=$1
     [ -n "$2" ] && print "$2"
     $persistLog || exec > /dev/null 2>&1
-    dsys_batt reset >/dev/null
+    cmd_batt reset
     grep -Ev '^$|^#' $config > $TMPDIR/.config
     config=$TMPDIR/.config
-    applyOnPlug=(${applyOnPlug[*]-} ${applyOnBoot[*]-})
+    apply_on_boot default
     apply_on_plug default
-    tempLevel=0
     enable_charging
-    if [[ "$exitCode" = [127] ]]; then
+    if tt "$exitCode" "[127]"; then
       . $execDir/logf.sh
       logf --export
-      notif "⚠️ Exit $exitCode; log: acc -l tail"
+      notif "⚠️ Daemon stopped with exit code $exitCode!"
     fi
     cd /
     echo versionCode=$versionCode
@@ -132,25 +118,18 @@ if ! $_INIT; then
     # source config & set discharge polarity
     set_dp
 
-    if not_charging; then
-      unsolicitedResumes=0
-    else
+    if ! not_charging; then
       isCharging=true
-      # [auto mode] change the charging switch if charging has not been enabled by acc (if behavior repeats 3 times in a row)
-      if $chDisabledByAcc && [ -n "${chargingSwitch[0]-}" ] && [[ "${chargingSwitch[*]}" != *\ -- ]] \
+      # [auto mode] change the charging switch if charging has not been enabled by acc
+      if $chDisabledByAcc && [ -n "${chargingSwitch[0]-}" ] && ! tt "${chargingSwitch[*]}" "*--" \
         && sleep ${loopDelay[1]} && { ! not_charging || { isCharging=false; false; }; }
       then
-        if [ $unsolicitedResumes -ge 3 ]; then
-          if grep -q "^${chargingSwitch[*]}$" $TMPDIR/ch-switches; then
-            sed -i "\|^${chargingSwitch[*]}$|d" $TMPDIR/ch-switches
-            echo "${chargingSwitch[*]}" >> $TMPDIR/ch-switches
-          fi
-          $TMPDIR/acca $config --set charging_switch=
-          chargingSwitch=()
-          unsolicitedResumes=0
-        else
-          unsolicitedResumes=$((unsolicitedResumes + 1))
+        if grep -q "^${chargingSwitch[*]}$" $TMPDIR/ch-switches; then
+          sed -i "\|^${chargingSwitch[*]}$|d" $TMPDIR/ch-switches
+          echo "${chargingSwitch[*]}" >> $TMPDIR/ch-switches
         fi
+        $TMPDIR/acca --set charging_switch=
+        chargingSwitch=()
       fi
       # [auto mode] set charging switch
       if [ -z "${chargingSwitch[0]-}" ]; then
@@ -166,11 +145,11 @@ if ! $_INIT; then
     [ $(cat $temp) -lt $(( ${temperature[3]} * 10 )) ] || shutdown
 
     [ -z "${cooldownCurrent-}" ] || {
-      if [ $(cat $temp) -le $(( ${temperature[2]} * 10 )) ] && ! _ge_cooldown_cap; then
+      if [ $(cat $temp) -le $(( ${temperature[2]%r} * 10 )) ] && ! _ge_cooldown_cap; then
         restrictCurr=false
       fi
       if _ge_cooldown_cap || [ $(cat $temp) -ge $(( ${temperature[0]} * 10 )) ] \
-        || { ! $isCharging && [ $(cat $temp) -ge $(( ${temperature[2]} * 10 )) ]; }
+        || { ! $isCharging && [ $(cat $temp) -ge $(( ${temperature[2]%r} * 10 )) ]; }
       then
         restrictCurr=true
       fi
@@ -178,27 +157,40 @@ if ! $_INIT; then
 
     if $isCharging; then
 
-      if [ -f $TMPDIR/.mcc-read ]; then
-        # set charging current control files, as needed
-        if [ -n "${maxChargingCurrent[0]-}" ] \
-          && { [ -z "${maxChargingCurrent[1]-}" ] || [[ "${maxChargingCurrent[1]-}" = -* ]]; } \
-          && grep -q / $TMPDIR/ch-curr-ctrl-files 2>/dev/null
-        then
-          set_ch_curr ${maxChargingCurrent[0]} || :
-          . $execDir/write-config.sh
+      # set chgStatusCode and capacitySync
+      if [ -z "$chgStatusCode" ] && cmd_batt reset \
+        && chgStatusCode=$(dumpsys battery 2>/dev/null | sed -n 's/^  status: //p')
+      then
+        if [ ! -f $TMPDIR/.dexopt.done ] && _uptime 900; then
+          start-stop-daemon -bx $TMPDIR/.bg-dexopt-job.sh -S -- 2>/dev/null || :
+          touch $TMPDIR/.dexopt.done
         fi
-      else
-        # parse charging current ctrl files
-        . $execDir/read-ch-curr-ctrl-files-p2.sh
+      fi
+
+      # read charging current ctrl files (part 2) once
+      $chCurrRead || {
+        if [ ! -f $TMPDIR/.ch-curr-read ] \
+          || ! grep -q / $TMPDIR/ch-curr-ctrl-files 2>/dev/null
+        then
+          . $execDir/read-ch-curr-ctrl-files-p2.sh
+          chCurrRead=true
+        fi
+      }
+
+      # set charging current control files, as needed
+      if $chCurrRead && [ -n "${maxChargingCurrent[0]-}" ] \
+        && { [ -z "${maxChargingCurrent[1]-}" ] || tt "${maxChargingCurrent[1]-}" "-*"; } \
+        && grep -q / $TMPDIR/ch-curr-ctrl-files 2>/dev/null
+      then
+        $TMPDIR/acca --set max_charging_current=${maxChargingCurrent[0]}
       fi
 
        # set charging voltage control files, as needed
       if [ -n "${maxChargingVoltage[0]-}" ] \
-        && { [ -z "${maxChargingVoltage[1]-}" ] || [[ "${maxChargingCurrent[1]-}" = -* ]]; } \
+        && { [ -z "${maxChargingVoltage[1]-}" ] || tt "${maxChargingVoltage[1]-}" "-*"; } \
         && grep -q / $TMPDIR/ch-volt-ctrl-files 2>/dev/null
       then
-        set_ch_volt ${maxChargingVoltage[0]} || :
-        . $execDir/write-config.sh
+        $TMPDIR/acca --set max_charging_voltage=${maxChargingVoltage[0]}
       fi
 
       $cooldown || {
@@ -206,7 +198,8 @@ if ! $_INIT; then
         if $resetBattStatsOnPlug && ${resetBattStats[2]}; then
           sleep ${loopDelay[0]}
           not_charging || {
-            resetbs
+            dumpsys batterystats --reset < /dev/null > /dev/null 2>&1
+            rm /data/system/batterystats* || :
             resetBattStatsOnPlug=false
           } 2>/dev/null
         fi
@@ -214,14 +207,11 @@ if ! $_INIT; then
 
       if $restrictCurr && [ -n "${cooldownCurrent-}" ]; then
         $cooldown || (set_ch_curr ${cooldownCurrent:--} || :)
-        (maxChargingCurrent=(); apply_on_plug)
       else
         [ -n "${maxChargingCurrent[0]-}" ] || (set_ch_curr - || :)
         apply_on_plug
       fi
 
-      set_ch_volt ${maxChargingVoltage[0]:--}
-      { $restrictCurr && [[ .${cooldownCurrent-} = .*% ]]; } || set_temp_level
       shutdownWarnings=true
 
     else
@@ -229,34 +219,31 @@ if ! $_INIT; then
       $rebootResume \
         && le_resume_cap \
         && [ $(cat $temp) -lt $(( ${temperature[1]} * 10 )) ] && {
-          notif "⚠️ System will reboot in 60 seconds to re-enable charging! Run \"accd.\" to abort."
+          notif "⚠️ System will reboot in 60 seconds to re-enable charging! Stop accd to abort."
           sleep 60
           ! not_charging || {
             /system/bin/reboot || reboot
           }
         } || :
 
+      # set dischgStatusCode and capacitySync
+      [ -z "$dischgStatusCode" ] && cmd_batt reset \
+        && dischgStatusCode=$(dumpsys battery 2>/dev/null | sed -n 's/^  status: //p')
+
       $cooldown || {
         resetBattStatsOnPlug=true
         if $resetBattStatsOnUnplug && ${resetBattStats[1]}; then
           sleep ${loopDelay[1]}
           ! not_charging Discharging || {
-            resetbs
+            dumpsys batterystats --reset < /dev/null > /dev/null 2>&1
+            rm /data/system/batterystats* || :
             resetBattStatsOnUnplug=false
           } 2>/dev/null
         fi
       }
     fi
 
-    mask_capacity
-
-    set +u
-    [ -n "${idleApps[0]}" ] \
-      && dumpsys activity top | sed -En 's/(.*ACTIVITY )(.*)(\/.*)/\2/p' \
-      | tail -n 1 | grep -E "$(echo ${idleApps[*]} | sed 's/ /|/g; s/,/|/g')" >/dev/null \
-      && pause_now || :
-    [ $(cat /dev/encore_mode 2>/dev/null || cat /data/adb/.config/encore/current_profile 2>/dev/null || print 0) -ne 1 ] || pause_now
-    set -u
+    sync_capacity
 
     # log buffer reset
     [ $(du -k $log | cut -f 1) -lt 256 ] || : > $log
@@ -266,116 +253,97 @@ if ! $_INIT; then
 
 
   ctrl_charging() {
+  local count=0
+  local last_charger_connected=""
+  local was_idle=false
+  local resumed_notified=false
+  local light_temp_notified=false
+  local low_notified_level=21
+  local permanent_idle_notif=false
 
     while :; do
+      batt_level=$(cat $battCapacity)
+      batt_temp=$(cat $temp)
+      charger_connected=$(cat $battStatus)
+
+      # Notifikasi charger dipasang hanya sekali saat konek
+      if [ "$charger_connected" = "Charging" ] && [ "$last_charger_connected" != "Charging" ]; then
+        notif "🔌 Charger connected"
+
+        resumed_notified=false
+        light_temp_notified=false
+        low_notified_level=21
+        permanent_idle_notif=false
+      fi
+      # Notifikasi charger dilepas hanya sekali saat disconnect
+      if [ "$charger_connected" != "Charging" ] && [ "$last_charger_connected" = "Charging" ]; then
+        notif "🔌 Charger disconnected"
+        if $was_idle && $permanent_idle_notif; then
+          notif "Idle mode"
+        fi
+
+        resumed_notified=false
+        light_temp_notified=false
+        low_notified_level=21
+        permanent_idle_notif=false
+      fi
+      last_charger_connected="$charger_connected"
+
+      # Notifikasi low battery per level di bawah 20%, sekali per plug/unplug cycle
+      if [ "$batt_level" -lt "$low_notified_level" ] && [ "$batt_level" -le 20 ]; then
+        notif "⚠️ Battery is at or below $batt_level%!"
+        low_notified_level=$batt_level
+           permanent_idle_notif=false
+      fi
 
       if is_charging; then
-
-        xIdle=false
-        mtReached=false
-
-        # disable charging after a reboot, if min < capacity < max
-        if $offMid && [ -f $TMPDIR/.minCapMax ] && _lt_pause_cap && _gt_resume_cap; then
+        # Stop charging di 90%
+        if [ "$batt_level" -ge 90 ]; then
           disable_charging
-          force_off
-          sleep ${loopDelay[1]}
-          rm $TMPDIR/.minCapMax 2>/dev/null || :
-          continue
+          notif "⏸️ Charging paused at 90%"
+          permanent_idle_notif=false
         fi
+        # Idle mode di 90% (notif hanya sekali per plug/unplug cycle, dan saat pertama kali masuk idle dari bawah 90%)
+        if [ "$batt_level" -eq 90 ]; then
 
-        # disable charging under <conditions>
-        if mt_reached || _ge_pause_cap; then
-          if ! $allowIdleAbovePcap && [ $xIdleCount -lt 2 ] && cap_idle_threshold; then
-            # if possible, avoid idle mode when capacity > pause_capacity
-            (cat $config > $TMPDIR/.cfg
-            config=$TMPDIR/.cfg
-            prioritizeBattIdleMode=no
-            cycle_switches_off
-            echo "chargingSwitch=(${chargingSwitch[@]-})" > $TMPDIR/.sw
-            force_off)
-            chDisabledByAcc=true
-            [ $_status != Discharging ] || xIdle=true
-          else
-            disable_charging
-            force_off
+          if ! $was_idle; then
+            notif "Idle mode: 90% (first entry after plug or charge)"
+            was_idle=true
+            permanent_idle_notif=true
           fi
-          ! ${resetBattStats[0]} || {
-            # reset battery stats on pause
-            resetbs
-          }
-          sleep ${loopDelay[1]}
-          rm $TMPDIR/.minCapMax 2>/dev/null || :
-          continue
+        else
+          was_idle=false
         fi
-
-        # cooldown cycle
-
-        while [ -n "${cooldownRatio[0]-}" ]; do
-
-          if [ $(cat $temp) -ge $(( ${temperature[0]} * 10 )) ] || _ge_cooldown_cap; then
-            cooldown=true
-          else
-            break
+        # Light temperature warning (>=45°C, notif sekali per plug/unplug cycle)
+        if [ "$batt_temp" -ge 450 ] && ! $light_temp_notified; then
+          notif "⚠️ Battery temperature is 45°C or above (light warning)"
+          light_temp_notified=true
+          permanent_idle_notif=false
+        fi
+        # Overheat warning
+        if [ "$batt_temp" -ge 550 ]; then
+          notif "⚠️ Battery temperature has reached 55°C!"
+          permanent_idle_notif=false
+        fi
+        # Resume charging di 80% (notif hanya sekali per plug/unplug cycle)
+        if [ "$batt_level" -le 80 ]; then
+          enable_charging
+          if ! $resumed_notified; then
+            notif "Charging resumed at 80%"
+            resumed_notified=true
+            permanent_idle_notif=false
           fi
-
-          _lt_pause_cap && [ $(cat $temp) -lt $(( ${temperature[1]} * 10 )) ] && is_charging || break
-
-          if [ -z "${cooldownCurrent-}" ]; then
-            dsys_batt set ac 1
-            disable_charging
-            sleep ${cooldownRatio[1]:-${loopDelay[0]}}
-            enable_charging
-            sleep ${cooldownRatio[0]:-${loopDelay[0]}}
-          else
-            (set_ch_curr ${cooldownCurrent:--} || :)
-            sleep ${cooldownRatio[1]:-${loopDelay[0]}}
-            if [[ .${cooldownCurrent-} = .*% ]]; then
-              set_temp_level $tempLevel
-            else
-              [ -n "${maxChargingCurrent[0]-}" ] || set_ch_curr -
-            fi || :
-            sleep ${cooldownRatio[0]:-${loopDelay[0]}}
-          fi
-        done
-
-        cooldown=false
+        fi
+        # Safe shutdown minimal 2%
+        if [ "$batt_level" -le 2 ]; then
+          notif "⚠️ WARNING: Battery low, minimal safe shutdown!"
+          permanent_idle_notif=false
+        fi
         sleep ${loopDelay[0]}
-
       else
-
-        if $xIdle && _le_pause_cap; then
+        # Resume charging di 80% jika tidak charging
+        if [ "$batt_level" -le 80 ]; then
           enable_charging
-          disable_charging
-          xIdle=false
-          xIdleCount=$((xIdleCount + 1))
-        # enable charging under <conditions>
-        elif _le_resume_cap && [ $(cat $temp) -le $(( ${temperature[2]} * 10 )) ]; then
-          rm $TMPDIR/.forceoff* 2>/dev/null && sleep ${loopDelay[0]} || :
-          enable_charging
-        fi
-
-        # auto-shutdown
-        if _uptime 900 && not_charging Discharging; then
-          if [ ${capacity[0]} -ge 1 ]; then
-            # warnings
-            ! $shutdownWarnings || {
-              if [ ${capacity[0]} -gt 3000 ]; then
-                ! [ $(grep -o '^..' $voltNow) -eq $(( ${capacity[0]%??} + 1 )) ] \
-                  || ! notif "⚠️ WARNING: ~100mV to auto shutdown, plug the charger!" \
-                    || sleep ${loopDelay[1]}
-              else
-                ! [ $(batt_cap) -eq $(( ${capacity[0]} + 5 )) ] \
-                  || ! notif "⚠️ WARNING: 5% to auto shutdown, plug the charger!" \
-                    || sleep ${loopDelay[1]}
-              fi
-              shutdownWarnings=false
-            }
-            # action
-            if _le_shutdown_cap; then
-              sleep ${loopDelay[1]}
-              ! not_charging Discharging || shutdown
-            fi
-          fi
         fi
         sleep ${loopDelay[1]}
       fi
@@ -399,46 +367,31 @@ if ! $_INIT; then
   }
 
 
-  mt_reached() {
-    [ $(cat $temp) -ge $(( ${temperature[1]} * 10 )) ] && mtReached=true
-  }
-
-
-  pause_now() {
-    capacity[3]=$(batt_cap)
-    capacity[2]=$((capacity[3] - 5))
-  }
-
-
   set_dp() {
-    local cmd=
-    local curr=
-    . $config
-    while [ -z "${_DPOL-}" ] && $battStatusWorkaround && [ $currFile != $TMPDIR/.dummy-mcc ]; do
-      curr=$(cat $currFile)
-      if [ $(cat $battStatus) = Charging ]; then
-        if [ $curr -gt 0 ]; then
-          sdp -
-        elif [ $curr -lt 0 ]; then
-          sdp +
-        else
-          /dev/acca --set batt_status_workaround=false
-          return 0
-        fi
+    src_cfg
+    while [ -z "${dischargePolarity-}" ] && [ $currFile != $TMPDIR/.dummy-curr ] && $battStatusWorkaround; do
+      (if online; then
+        notif "discharge_polarity is not set. Unplug and wait, or set it manually."
+        (while [ -z "${dischargePolarity-}" ] && online; do
+          sleep ${loopDelay[0]}
+          src_cfg
+          set +x
+        done)
+        src_cfg
+        [ -z "${dischargePolarity-}" ] || notif "discharge_polarity set successfully!"
       else
+        (cmd="$TMPDIR/acca --set discharge_polarity="
+        curr=$(cat $currFile)
         if [ $curr -gt 0 ]; then
-          sdp +
+          eval "$cmd"+
         elif [ $curr -lt 0 ]; then
-          sdp -
-        else
-          /dev/acca --set batt_status_workaround=false
-          return 0
-        fi
+          eval "$cmd"-
+        fi)
+        notif "discharge_polarity set successfully!"
       fi
-      set +x
-      . $config
+      set +x)
+      src_cfg
     done
-    set -x
   }
 
 
@@ -449,35 +402,68 @@ if ! $_INIT; then
   }
 
 
-  mask_capacity() {
-
+  sync_capacity() {
     is_android || return 0
+    if [ ${capacity[4]} = true ] || ${capacity[5]} || \
+      { [ ${capacity[4]} = auto ] \
+      && [ $(dumpsys battery 2>/dev/null | sed -n 's/^  level: //p') -ne $(cat $battCapacity) ] \
+      && sleep 2 \
+      &&  [ $(dumpsys battery 2>/dev/null | sed -n 's/^  level: //p') -ne $(cat $battCapacity) ]; }
+    then
+      capacitySync=true
+      isCharging=${isCharging:-false}
+      local isCharging_=$isCharging
+      local battCap=$(cat $battCapacity)
 
-    isCharging=${isCharging:-false}
-    local isCharging_=$isCharging
-    local battCap=$(batt_cap)
-    local maskedCap=
-
-    if ${capacity[4]} && [ ${capacity[3]} -le 100 ]; then
-
-      if [ ${capacity[0]} -le 0 ]; then
-        maskedCap=$(calc $battCap \* 100 / ${capacity[3]} | xargs printf %.f)
-      else
-        maskedCap=$(calc "($battCap - ${capacity[0]}) * 100 / (${capacity[3]} - ${capacity[0]})" | xargs printf %.f)
-      fi
-
-      [ $maskedCap -le 100 ] || maskedCap=100
-      [ $maskedCap -ge 2 ] || maskedCap=2
+      ! ${capacity[5]} || {
+        if [ ${capacity[3]} -gt 3000 ]; then
+          local maskedCap=$battCap
+        else
+          local maskedCap=
+          if [ ${capacity[0]} -le 0 ]; then
+            maskedCap=$(calc $battCap \* 100 / ${capacity[3]} | xargs printf %.f)
+          else
+            maskedCap=$(calc "($battCap - ${capacity[0]}) * 100 / (${capacity[3]} - ${capacity[0]})" | xargs printf %.f)
+          fi
+          [ $maskedCap -le 100 ] || maskedCap=100
+        fi
+      }
 
       ! $cooldown || isCharging=true
-      $isCharging && dsys_batt set ac 1 || dsys_batt unplug
+
+      if $isCharging; then
+        cmd_batt set ac 1
+        cmd_batt set status $chgStatusCode
+      else
+        cmd_batt unplug
+        cmd_batt set status $dischgStatusCode
+      fi
 
       isCharging=$isCharging_
-      dsys_batt set level $maskedCap
-      dsys_batt set temp $(cat $temp)
 
+      [ $battCap -lt 2 ] || {
+        if ${capacity[5]}; then
+          cmd_batt set level $maskedCap
+        else
+          cmd_batt set level $battCap
+        fi
+      }
     else
-      dsys_batt reset >/dev/null
+      ! $capacitySync || {
+        cmd_batt reset
+        capacitySync=false
+      }
+    fi
+  }
+
+
+  temp_ok() {
+    if [ $(cat $temp) -le $(( ${temperature[2]%r} * 10 )) ] \
+      || { [ -n "${cooldownCurrent-}" ] && tt "${temperature[2]}" "*r" && [ $(cat $temp) -le $(( ${temperature[0]} * 10 )) ]; }
+    then
+      return 0
+    else
+      return 1
     fi
   }
 
@@ -486,19 +472,17 @@ if ! $_INIT; then
   . $execDir/misc-functions.sh
 
 
-  xIdle=false
-  xIdleCount=0
+  capacitySync=false
+  chCurrRead=false
   chDisabledByAcc=false
   chgStatusCode=""
   cooldown=false
   dischgStatusCode=""
   isAccd=true
-  mtReached=false
   resetBattStatsOnPlug=false
   resetBattStatsOnUnplug=false
   restrictCurr=false
   shutdownWarnings=true
-  unsolicitedResumes=0
   versionCode=$(sed -n s/versionCode=//p $execDir/module.prop 2>/dev/null || :)
 
 
@@ -521,13 +505,12 @@ if ! $_INIT; then
 
   misc_stuff "${1-}"
   . $execDir/oem-custom.sh
-  . $config
+  src_cfg
   currentWorkaround0=$currentWorkaround
 
 
   apply_on_boot
   touch $TMPDIR/.minCapMax
-  rm $TMPDIR/.testingsw 2>/dev/null || :
   ctrl_charging
   exit $?
 
@@ -567,6 +550,7 @@ else
 
   # prepare executables
 
+  #legacy
   ln -fs $execDir/${id}.sh /dev/$id
   ln -fs $execDir/${id}.sh /dev/${id}d,
   ln -fs $execDir/${id}.sh /dev/${id}d.
@@ -580,6 +564,7 @@ else
   ln -fs $execDir/${id}.sh $TMPDIR/${id}d.
   ln -fs $execDir/${id}a.sh $TMPDIR/${id}a
   ln -fs $execDir/service.sh $TMPDIR/${id}d
+  ln -fs $execDir/uninstall.sh $TMPDIR/uninstall
 
   if [ -d /sbin ]; then
     if grep -q '^tmpfs / ' /proc/mounts; then
@@ -616,15 +601,13 @@ else
   cd /sys/class/power_supply/
   : > $TMPDIR/ch-switches_
   : > $TMPDIR/ch-switches__
-
   for f in $TMPDIR/plugins/ctrl-files.sh \
     ${execDir}-data/plugins/ctrl-files.sh \
     $execDir/ctrl-files.sh
   do
     [ -f $f ] && . $f && break
   done
-
-  ls_ch_switches | grep -Ev '^#|^$|num_system_temp' | \
+  ls_ch_switches | grep -Ev '^#|^$' | \
     while IFS= read -r chargingSwitch; do
       set -f
       set -- $chargingSwitch
@@ -646,25 +629,11 @@ else
       fi
       echo >> $TMPDIR/ch-switches_
     done
-
-  ls_ch_switches | grep num_system_temp | \
-    while IFS= read -r chargingSwitch; do
-      chsw=($chargingSwitch)
-      [ -f ${chsw[0]} ] || continue
-      chsw[2]=$(cat ${chsw[2]})
-      [ -n "${chsw[2]}" ] || continue
-      echo "${chsw[*]}" >> $TMPDIR/ch-switches_
-      for i in 1 2; do
-        echo "${chsw[0]} ${chsw[1]} $((chsw[2] - i))" >> $TMPDIR/ch-switches_
-      done
-    done
-
   cat $dataDir/logs/parsed.log 2>/dev/null >> $TMPDIR/ch-switches_
   sed -i -e 's/ $//' -e '/^$/d' $TMPDIR/ch-switches_
 
 
   # read charging voltage control files
-  rm $TMPDIR/.mcc-read 2>/dev/null
   : > $TMPDIR/ch-volt-ctrl-files_
   ls -1 $(ls_volt_ctrl_files | grep -Ev '^#|^$') 2>/dev/null | \
     while read file; do
@@ -673,10 +642,10 @@ else
       echo ${file}::$(sed -n 's/^..../v/p' $file)::$(cat $file) \
         >> $TMPDIR/ch-volt-ctrl-files_
     done
-  grep -q / $TMPDIR/ch-volt-ctrl-files_ || rm $TMPDIR/ch-volt-ctrl-files_
 
 
   # exclude troublesome ctrl files
+  rm $TMPDIR/.ch-curr-read $TMPDIR/ch-curr-ctrl-files 2>/dev/null
   for file in $TMPDIR/ch-*_; do
     sort -u $file | grep -Eiv 'parallel|::-|bq[0-9].*/current_max' > ${file%_}
     rm $file
@@ -691,13 +660,12 @@ else
   # preprocess battery interface
   . $execDir/batt-interface.sh
 
+  # prepare bg-dexopt-job wrapper
+  printf "#!/system/bin/sh\n/system/bin/cmd package bg-dexopt-job < /dev/null > /dev/null 2>&1" > $TMPDIR/.bg-dexopt-job.sh
+  chmod 0755 $TMPDIR/.bg-dexopt-job.sh
 
   # start $id daemon
   rm $TMPDIR/.ghost-charging 2>/dev/null
-  if [ -f $TMPDIR/.install-notes ]; then
-    $TMPDIR/acca $config --notif "$(cat $TMPDIR/.install-notes)"
-    mv -f $TMPDIR/.install-notes $TMPDIR/.updated
-  fi 2>/dev/null
   exec $0 $args
 fi
 

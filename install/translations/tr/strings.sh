@@ -57,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  printf "Şarj kablosunun bağlı olduğundan emin ol 🔌\n\n"
+  echo "Şarj kablosunun bağlı olduğundan emin ol 🔌"
 }
 
 print_switch_works() {

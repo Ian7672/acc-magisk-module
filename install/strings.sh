@@ -16,10 +16,6 @@ print_not_running() {
   echo "accd is not running"
 }
 
-print_restart_accd() {
-  echo "Restart accd manually to exit this mode"
-}
-
 print_restarted() {
   echo "accd restarted"
 }
@@ -61,7 +57,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  printf "Ensure the charger is plugged 🔌\n\n"
+  echo "Ensure the charger is plugged 🔌"
 }
 
 print_switch_works() {
@@ -73,8 +69,7 @@ print_switch_fails() {
 }
 
 print_no_ctrl_file() {
-  [ .${1-} = .v ] && echo "No voltage control file found" \
-    || echo "No current control file found; try the temp_level feature"
+  echo "No control file found"
 }
 
 print_not_found() {
@@ -88,7 +83,7 @@ Usage
 
   acc   Wizard
 
-  accd [--init|-i]   Start/restart accd; -i triggers a clean restart (recreates runtime cache)
+  accd   Start/restart accd
 
   accd.   Stop acc/daemon
 
@@ -120,7 +115,7 @@ Usage
 
 Options
 
-  -b|--rollback [nv]   Restore previous installation; with "n" flag, the config is not restored; with "v" flag, nothing is done other than printing the version that would have been restored
+  -b|--rollback   Undo upgrade
 
   -c|--config [[editor] [editor_opts] | g for GUI]   Edit config (default editor: nano/vim/vi)
     e.g.,
@@ -130,11 +125,8 @@ Options
 
   -c|--config a|d string|regex   Append (a) or delete (d) string/pattern to/from config
     e.g.,
-      acc -c a : sleep profile, at 22:00 acc -s pc=50 mcc=500 mcv=3900, acc -n switched to sleep profile (append a schedule)
+      acc -c a ": sleep profile; at 22:00 acc -s pc=50 mcc=500 mcv=3900" (append a schedule)
       acc -c d sleep (remove all lines matching "sleep")
-
-  -c|--config h string   Print config help text associated with "string" (config variable)
-    e.g., acc -c h rt (or resume_temp)
 
   -d|--disable [#%, #s, #m, #h or #mv (optional)]   Disable charging
     e.g.,
@@ -157,12 +149,11 @@ Options
       acc -e 30m (recharge for 30 minutes)
       acc -e 4000mv (recharge to 4000mV)
 
-  -f|--force|--full [capacity] [-a] [additional opts/args]   Charge once to a given capacity (default: 100%), without restrictions
+  -f|--force|--full [capacity] [additional options and args]   Charge once to a given capacity (default: 100%), without restrictions
     e.g.,
       acc -f 95 (charge to 95%)
       acc -f (charge to 100%)
-      acc -f -s mcc=500 (charge to 100% with a 500 mA limit)
-      acc -f 90 -a (the -a (auto) tries to restart accd automatically shortly after the charger is unplugged; not supported by all devices)
+      acc -f -sc 500 (charge to 100% with a 500 mA limit)
 
   -F|--flash ["zip_file"]   Flash any zip files whose update-binary is a shell script
     e.g.,
@@ -178,7 +169,7 @@ Options
     e.g.,
       acc -i
       acc -i volt
-      acc -i volt,curr (multiple patterns)
+      acc -i 'volt\|curr'
 
   -l|--log [-a|--acc] [[editor] [editor_opts] | g for GUI]   Print/edit accd log (default) or acc log (-a|--acc)
     e.g.,
@@ -211,9 +202,6 @@ Options
   -s|--set   Print current config
     e.g., acc -s
 
-  -s|--set file   Get config from file (in "acc -s" format); the file's path must be absolute; partial config is supported
-    e.g., acc -s /data/config
-
   -s|--set prop1=value "prop2=value1 value2"   Set [multiple] properties
     e.g.,
       acc -s charging_switch=
@@ -238,7 +226,6 @@ Options
     e.g.,
       acc -s d (print entire defaul config)
       acc -s d cap (print only entries matching "cap")
-      acc -s cap,temp (multiple patterns)
 
   -sd [egrep regex (default: ".")]   Same as above
 
@@ -263,11 +250,6 @@ Options
 
   -ss:   Same as above
 
-  -s|--set s::|chargingSwitch::   List working charging switches and mcc, mcv & tl support status
-    e.g., acc -s s::
-
-  -ss::   Same as above
-
   -s|--set v|--voltage [millivolts|-] [--exit]   Set/print/restore_default max charging voltage (range: 3700-4300$(print_mV))
     e.g.,
       acc -s v (print)
@@ -277,32 +259,24 @@ Options
 
   -sv [millivolts|-] [--exit]   Same as above
 
-  -t[#]|--test[#] [q] [ctrl_file1 on off [ctrl_file2 on off]]   Test custom charging switches
-    Implies -x, as in acc -x -t ...
-    [q]: acca -t q ... (quiet test; reports Ok, Idle or Fail)
+  -t|--test [ctrl_file1 on off [ctrl_file2 on off]]   Test custom charging switches
     e.g.,
-      acc -t5 battery/charging_enabled 1 0 (test with _STI=5)
       acc -t battery/charging_enabled 1 0
       acc -t /proc/mtk_battery_cmd/current_cmd 0::0 0::1 /proc/mtk_battery_cmd/en_power_path 1 0 ("::" is a placeholder for " " - MTK only)
 
-  -t[#]|--test[#] [q] [file]   Test charging switches from a file (default: $TMPDIR/ch-switches)
-    Implies -x, as in acc -x -t ...
-    [q]: acca -t q ... (quiet test; reports Ok, Idle or Fail)
+  -t|--test [file]   Test charging switches from a file (default: $TMPDIR/ch-switches)
     e.g.,
       acc -t (test known switches)
       acc -t /sdcard/experimental_switches.txt (test custom/foreign switches)
 
-  -t[#]|--test[#] [q] [p|parse]   Parse potential charging switches from the power supply log (as "acc -p"), test them all, and add the working ones to the list of known switches
-    Implies -x, as in acc -x -t p
-    [q]: acca -t q ... (quiet test; reports Ok, Idle or Fail)
+  -t|--test [p|parse]   Parse potential charging switches from the power supply log (as "acc -p"), test them all, and add the working ones to the list of known switches
+    Implies -x, as acc -x -t p
     e.g., acc -t p
 
-  -T|--logtail ['egrep regex, with "," in place of "|"']   Monitor accd log (tail -F)
-    e.g.,
-      acc -T
-      acc -T 'cap,enable'
+  -T|--logtail   Monitor accd log (tail -F)
+    e.g., acc -T
 
-  -u|--upgrade [-c|--changelog] [-f|--force] [-n|--non-interactive]   Online upgrade/downgrade
+  -u|--upgrade [-c|--changelog] [-f|--force] [-k|--insecure] [-n|--non-interactive]   Online upgrade/downgrade
     e.g.,
       acc -u dev (upgrade to the latest dev version)
       acc -u (latest version from the current branch)
@@ -318,12 +292,11 @@ Options
   -v|--version   Print acc version and version code
     e.g., acc -v
 
-  -w[#]|--watch[#] [pattern1,pattern2,...]   Monitor battery uevent
+  -w#|--watch#   Monitor battery uevent
     e.g.,
       acc -w (update info every second)
       acc -w0.5 (update info every half a second)
       acc -w0 (no extra delay)
-      acc -w curr,volt
 
 
 Exit Codes
@@ -342,7 +315,7 @@ Exit Codes
   11. Current (mA) out of 0-9999 range
   12. Initialization failed
   13. Failed to lock $TMPDIR/acc.lock
-  14. ACC won't initialize, because a "disable" flag is set
+  14. ACC won't initialize, because the Magisk module disable flag is set
   15. Idle mode is supported (--test)
   16. Failed to enable charging (--test)
 
@@ -436,7 +409,7 @@ print_export_logs() {
 }
 
 print_1shot() {
-  echo "Charge once to a given level (default: 100%), without restrictions; you can append -s ... for other settings"
+  echo "Charge once to a given capacity (default: 100%), without restrictions"
 }
 
 print_charge_once() {
@@ -444,11 +417,11 @@ print_charge_once() {
 }
 
 print_mA() {
-  echo " mA"
+  echo " Milliamps"
 }
 
 print_mV() {
-  echo " mV"
+  echo " Millivolts"
 }
 
 print_uninstall() {
@@ -475,6 +448,14 @@ print_update() {
   echo "Check for update 🔃"
 }
 
+print_W() {
+  echo " Watts"
+}
+
+print_V() {
+  echo " Volts"
+}
+
 print_available() {
   echo "$@ is available"
 }
@@ -485,6 +466,10 @@ print_install_prompt() {
 
 print_no_update() {
   echo "No update available"
+}
+
+print_A() {
+  echo " Amps"
 }
 
 print_only() {
@@ -527,7 +512,7 @@ print_acct_info() {
   battIdleMode: whether the device can run directly off the charger.
   If it's not supported, you still have options. Refer to \"README > FAQ > What's idle mode, and how do I set it up?\"
 
-  The output of this command is saved to ${logF}."
+  The output of this command is saved to /sdcard/Download/acc-t_output-${device}.log."
 }
 
 
@@ -551,5 +536,5 @@ print_resume() {
 
 
 print_hang() {
-  echo "Hang on... ⏳"
+  echo "Hang on..."
 }

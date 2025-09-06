@@ -1,12 +1,10 @@
 #!/system/bin/sh
 # acca: acc for front-ends (faster and more efficient than acc)
-# Copyright 2020-2024, VR25
+# Copyright 2020-2023, VR25
 # License: GPLv3+
 
 
 at() { :; }
-
-online() { :; }
 
 
 daemon_ctrl() {
@@ -25,8 +23,14 @@ daemon_ctrl() {
 }
 
 
-# condensed "case...esac"
-eq() {
+src_cfg() {
+  /system/bin/sh -n $config 2>/dev/null || cat $execDir/default-config.txt > $config
+  . $config
+}
+
+
+# extended test
+tt() {
   eval "case \"$1\" in
     $2) return 0;;
   esac"
@@ -37,12 +41,11 @@ eq() {
 set -eu
 
 execDir=/data/adb/vr25/acc
+config=/data/adb/vr25/acc-data/config.txt
 dataDir=/data/adb/vr25/acc-data
-: ${config:=$dataDir/config.txt}
 defaultConfig=$execDir/default-config.txt
-
-export TMPDIR=/dev/.vr25/acc
-export verbose=false
+TMPDIR=/dev/.vr25/acc
+verbose=false
 
 cd /sys/class/power_supply/
 . $execDir/setup-busybox.sh
@@ -50,19 +53,15 @@ cd /sys/class/power_supply/
 mkdir -p $dataDir
 
 # custom config path
-! eq "${1-}" "*/*" || {
-  [ -f $1 ] || cp $config $1
-  config=$1
-  shift
-}
+case "${1-}" in
+  */*)
+    [ -f $1 ] || cp $config $1
+    config=$1
+    shift
+  ;;
+esac
 
-# wait for accd initialization
-[ -f $TMPDIR/.batt-interface.sh ] || {
-  for i in $(seq 35); do
-    [ -f $TMPDIR/.batt-interface.sh ] && break || sleep 2
-  done
-  unset i
-}
+export config execDir TMPDIR verbose
 
 
 case "$@" in
@@ -72,13 +71,12 @@ case "$@" in
     daemon_ctrl ${2-}
   ;;
 
-  # print charging info
+  # print battery uevent data
   -i*|--info*)
-    . $config
-    . $execDir/android.sh
+    src_cfg
     . $execDir/batt-interface.sh
     . $execDir/batt-info.sh
-    batt_info "${2-}" | grep -v '^$' 2>/dev/null || :
+    batt_info "${2-}" | sed 's/=Idle$/=Not charging/' #legacy, AccA
     exit 0
   ;;
 
@@ -97,9 +95,19 @@ case "$@" in
     shift
 
     . $defaultConfig
-    . $config
+    src_cfg
 
     export "$@"
+
+    [ .${mcc-${max_charging_current-x}} = .x ] || {
+      . $execDir/set-ch-curr.sh
+      set_ch_curr ${mcc:-${max_charging_current:--}} || :
+    }
+
+    [ ".${mcv-${max_charging_voltage-x}}" = .x ] || {
+      . $execDir/set-ch-volt.sh
+      set_ch_volt "${mcv:-${max_charging_voltage:--}}" || :
+    }
 
     . $execDir/write-config.sh
     exit 0
@@ -110,17 +118,15 @@ case "$@" in
   -s\ d*|-s\ --print-default*|--set\ d*|--set\ --print-default*|-sd*)
     [ $1 = -sd ] && shift || shift 2
     . $defaultConfig
-    one="${1//,/|}"
-    . $execDir/print-config.sh ns | grep -E "${one:-.}" | sed 's/^$//' || :
+    . $execDir/print-config.sh | grep -E "${1:-.}" | sed 's/^$//' || :
     exit 0
   ;;
 
   # print current config
   -s\ p*|-s\ --print|-s\ --print\ *|--set\ p|--set\ --print|--set\ --print\ *|-sp*)
     [ $1 = -sp ] && shift || shift 2
-    . $config
-    one="${1//,/|}"
-    . $execDir/print-config.sh | grep -E "${one:-.}" | sed 's/^$//' || :
+    src_cfg
+    . $execDir/print-config.sh | grep -E "${1:-.}" | sed 's/^$//' || :
     exit 0
   ;;
 
@@ -129,14 +135,4 @@ esac
 
 # other acc commands
 set +eu
-[ "${2:-x}" != q ] && exec $TMPDIR/acc $config "$@" \
-  || {
-    export logF=$TMPDIR/.logf
-    $TMPDIR/acc $config "$@" >/dev/null
-    case $? in
-      0) echo Ok;;
-      15) echo Idle;;
-      *) echo Fail;;
-    esac
-    return $?
-  }
+exec $TMPDIR/acc $config "$@"

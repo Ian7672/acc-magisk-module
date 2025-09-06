@@ -61,7 +61,7 @@ print_charging_enabled() {
 }
 
 print_unplugged() {
-  printf "Das Ladegerät muss eingesteckt sein, um fortzufahren 🔌\n\n"
+  echo "Das Ladegerät muss eingesteckt sein, um fortzufahren..."
 }
 
 print_switch_works() {

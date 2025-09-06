@@ -68,7 +68,7 @@ Sans prêter attention au fait que le système est rooté avec Magisk, l'install
 ---
 ## LICENSE
 
-Copyright 2017-2024, VR25
+Copyright 2017-2023, VR25
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -940,7 +940,7 @@ The format is as follows:
 
 ### Uninstalling ACC
 
-Either run `/data/adb/vr25/acc/uninstall.sh` (no reboot required; **charger must be plugged**) or uninstall from Magisk manager and reboot.
+Either run `/dev/.vr25/acc/uninstall` (no reboot required; **charger must be plugged**) or uninstall from Magisk manager and reboot.
 
 
 ### Initializing ACC

@@ -1,87 +1,3 @@
-**v2025.5.18-dev (202505180)**
-- acc -f fixes & enhancements
-- acca -t q ... (quiet test; reports Ok, Idle or Fail)
-- Add `/sys/devices/platform/charger/bypass_charger 0 1` switch (@Rem01Gaming)
-- Avoid needlessly forcing default current, temp_level and voltage
-- Config print includes acc version code
-- Fix new defaults not applying
-- Out of the box Encore Tweaks support
-- Set default `_STI=35`
-- Support acc -t[_STI] syntax
-- Update doc
-
-**v2025.5.1-dev (202505010)**
-- -c|--config h string   Print config help text associated with "string" (config variable, e.g., acc -c h rt (or resume_temp))
-- -s|--set file: Get config from file (in "acc -s" format)
-- [acc -c d string] Quotes are no longer mandatory
-- [acc -f] Don't use scripts from the default config; fix rt issue
-- [acc -p] Filter more irrelevant sysfs nodes
-- [acc -t] Add status column hint; show currently set charging switche(s)
-- acc -f [cap] -a tries to restart accd automatically shortly after the charger is unplugged; not supported by all devices
-- Add debug info to acc-t_output-${device}.log
-- Additional switches & device-specific settings
-- Also consider dc/online and pc_port/online for plug state detection
-- Always sort switches before printing/testing
-- Auto re-init accd on exit code 7
-- Auto-set batt_status_workaround=false for msm8937
-- battStatusOverride: Support ${chargingSwitch[2]} as a file
-- Don't include trailing " --" in working switches list
-- Drop capacity_sync, discharge_polarity and idle_threshold config variables
-- Drop legacy AccA logic
-- Exclude battery/store_mode switch
-- Exclude current_cmd from mcc working list
-- Exclude switches whose num_system_temp_in_levels is null
-- Fix "acc -f [#] -s ..."
-- Fix "acc -u -f dev^1" syntax & related errors
-- Fix "chargingSwitch[2]: parameter not set"
-- Fix & optimize current and voltage handling logic
-- Fix 'acc -c a "..."'
-- Fixes for msm8953 (e.g., Moto Z Play)
-- Forbid control files modifications by 3rd-party
-- Forbid mt - rt > 10 (fallback to rt = mt - 1)
-- Get battery level info from Android's battery service if it differs from the kernel's (replaces capacity_sync)
-- Implement battery stats reset workaround
-- Implement idle_apps
-- Improve bootloop handling logic and debugging tools
-- In acc -c a ': sleep profile; at 22:00 "acc -s pc=60 mcc=500; acc -n \"sleep profile\""', the quotes are optional and all ";" can be replaced with ","
-- Include dmesg and logcat in log archive
-- Drop cooldownCustom
-- Drop thermal_suspend (users can still have something like ":; pkill -STOP -f mi_thermald" in config to suspend thermal management processes)
-- Lower switch test timeout
-- Make it possible to post multiple notifications with acc -n
-- Make the scheduler safer and aware of the "/dev/" prefix
-- Minimize the use of subshells
-- Notifications include timestamps
-- Overwrite control files values 6 times within a second to wake up lazy switches
-- Overwrite control files values upon issuing a disable/enable charging command, regardless of charging status
-- Parse current and voltage control files only once per boot session to avoid "false defaults"
-- Patches for KSU/Apatch, install notes and "no reboot needed" workaround
-- Recommend trying temp_level if no regular current control file is found
-- Reduce idle mode false positives when `bsw=true`
-- Reinforce uninstall confirmation
-- Reset "auto switch" and move it to the end of the list only if unsolicitedResumes = 3, rather than 1
-- Reset switch (in auto-mode) if pbim changes via --set
-- Reset working-switches.log on a full switch test
-- Rewrite battery info logic (acc -i, -w)
-- Rewrite discharge_polarity's logic - now dynamic and fully automatic
-- Set idleAbovePcap threshold to (pause_capacity + 1)
-- Set millivolts idleAbovePcap threshold to (pause_capacity + 50)
-- Show applied config patches after upgrades (Android notification)
-- Speed up acca --set for voltage and current limits
-- Start accd as soon as the lockscreen shows up (no unlocking required)
-- Support "," in place of "|" for egrep patterns (e.g., acc -i curr,volt; acc -w curr,volt; acc -sp cap,temp)
-- Support cooldown_current with temp_level as back-end (e.g., acc -s cdc=60% to limit current by 60%)
-- Support curl binary without --dns-server option (for upgrades)
-- Support more devices with unconventional battery interfaces
-- Support Nexus 10 (manta)
-- Suppress "Terminated" messages
-- Suppress missing current control file errors
-- Try honoring allowIdleAbovePcap=false only 2x at most, per accd session
-- Try wget if curl fails
-- Update docs & strings
-- Update installer; add magic overlayfs module support
-- Update simplified Chinese translations (by @H-xiaoH)
-
 **v2023.10.16 (202310160)**
 - "edit g" shall work with non-root apps (acc -h g, acc -l g, acc -la g)
 - -f supports additional options (e.g., acc -f -sc 500)
@@ -112,3 +28,24 @@
 - Updated documentation
 - Validate current control files only while charging
 - Wizard is more user-friendly
+
+**v2023.8.19 (202308190)**
+- 1936210 Fix print_quit error
+- 28d68bd Fix -f and temp_level
+- 08e2c3f Fix --upgrade
+- 6f69b45 Add constant_charge_current* control files
+- 312a429 Update resume_temp information
+- 2744859 Fix module info updater
+- 6dac4a7 resume_temp with trailing r always overrides resume_capacity
+
+**v2023.8.12 (202308120)**
+- -H|--health <mAh>: Print estimated battery health
+- -r|--readme now sends intent to open README.html
+- Additional charging switches
+- Fix set_temp_level() sleep 4;
+- Fixed one-line scripts identifier
+- Fixed random accd crash
+- Implemented resume_temp; deprecated max_temp_pause
+- Refactored edit handler; use "g" (instead of "app") for GUI editor
+- Set default temp_level to null to accommodate battery/siop_level
+- Set list number width to 2 columns
